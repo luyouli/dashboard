@@ -26,6 +26,7 @@ import {
   Protocols,
   SecretList,
 } from '@api/backendapi';
+import {take} from 'rxjs/operators';
 
 import {CreateService} from '../../../common/services/create/service';
 import {HistoryService} from '../../../common/services/global/history';
@@ -64,7 +65,7 @@ export class CreateFromFormComponent implements OnInit {
     private readonly http_: HttpClient,
     private readonly route_: ActivatedRoute,
     private readonly fb_: FormBuilder,
-    private readonly dialog_: MatDialog,
+    private readonly dialog_: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -99,7 +100,7 @@ export class CreateFromFormComponent implements OnInit {
       this.namespace.patchValue(
         !this.namespace_.areMultipleNamespacesSelected()
           ? this.route_.snapshot.params.namespace || this.namespaces[0]
-          : this.namespaces[0],
+          : this.namespaces[0]
       );
     });
     this.http_
@@ -209,7 +210,7 @@ export class CreateFromFormComponent implements OnInit {
     const dialogDef = this.dialog_.open(CreateNamespaceDialog, dialogData);
     dialogDef
       .afterClosed()
-      .take(1)
+      .pipe(take(1))
       .subscribe(answer => {
         /**
          * Handles namespace dialog result. If namespace was created successfully then it
@@ -229,7 +230,7 @@ export class CreateFromFormComponent implements OnInit {
     const dialogDef = this.dialog_.open(CreateSecretDialog, dialogData);
     dialogDef
       .afterClosed()
-      .take(1)
+      .pipe(take(1))
       .subscribe(response => {
         /**
          * Handles create secret dialog result. If the secret was created successfully, then it
@@ -279,9 +280,7 @@ export class CreateFromFormComponent implements OnInit {
       containerImage: this.containerImage.value,
       imagePullSecret: this.imagePullSecret.value ? this.imagePullSecret.value : null,
       containerCommand: this.containerCommand.value ? this.containerCommand.value : null,
-      containerCommandArgs: this.containerCommandArgs.value
-        ? this.containerCommandArgs.value
-        : null,
+      containerCommandArgs: this.containerCommandArgs.value ? this.containerCommandArgs.value : null,
       isExternal: this.isExternal,
       name: this.name.value,
       description: this.description.value ? this.description.value : null,
@@ -290,9 +289,7 @@ export class CreateFromFormComponent implements OnInit {
       replicas: this.replicas.value,
       namespace: this.namespace.value,
       cpuRequirement: this.isNumber(this.cpuRequirement.value) ? this.cpuRequirement.value : null,
-      memoryRequirement: this.isNumber(this.memoryRequirement.value)
-        ? `${this.memoryRequirement.value}Mi`
-        : null,
+      memoryRequirement: this.isNumber(this.memoryRequirement.value) ? `${this.memoryRequirement.value}Mi` : null,
       labels: this.toBackendApiLabels(labels),
       runAsPrivileged: this.runAsPrivileged.value,
     };

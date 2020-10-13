@@ -14,7 +14,7 @@
 
 import {HttpParams} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {Service, ServiceList} from 'typings/backendapi';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
@@ -35,7 +35,7 @@ export class ServiceListComponent extends ResourceListWithStatuses<ServiceList, 
   constructor(
     private readonly service_: NamespacedResourceService<ServiceList>,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
     super('service', notifications, cdr);
     this.id = ListIdentifier.service;
@@ -61,22 +61,36 @@ export class ServiceListComponent extends ResourceListWithStatuses<ServiceList, 
   }
 
   isInPendingState(resource: Service): boolean {
-    return (
-      !resource.clusterIP ||
-      (resource.type === 'LoadBalancer' && resource.externalEndpoints.length === 0)
-    );
+    return !this.isInSuccessState(resource);
   }
 
   /**
-   * Service is in success state if cluster IP is defined and service type is LoadBalancer and
-   * external endpoints exist.
+   * Success state of a Service depends on the type of service
+   * https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+   * ClusterIP:     ClusterIP is defined
+   * NodePort:      ClusterIP is defined
+   * LoadBalancer:  ClusterIP is defined __and__ external endpoints exist
+   * ExternalName:  true
    */
   isInSuccessState(resource: Service): boolean {
-    return !this.isInPendingState(resource);
+    switch (resource.type) {
+      case 'ExternalName':
+        return true;
+      case 'LoadBalancer':
+        if (resource.externalEndpoints.length === 0) {
+          return false;
+        }
+        break;
+      case 'ClusterIP':
+      case 'NodePort':
+      default:
+        break;
+    }
+    return resource.clusterIP.length > 0;
   }
 
   getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'clusterip', 'internalendp', 'externalendp', 'age'];
+    return ['statusicon', 'name', 'labels', 'clusterip', 'internalendp', 'externalendp', 'created'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

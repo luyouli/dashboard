@@ -14,40 +14,41 @@
 
 @import '../../variables';
 
-.kd-nav {
+.kd-nav-container {
   background-color: transparent;
-  font-size: $body-font-size-base;
   height: 100%;
-  overflow: hidden;
-  overflow-y: auto;
-  white-space: nowrap;
+  width: $nav-width + 8px;
 
-  .mat-divider {
-    margin: $baseline-grid $baseline-grid (2 * $baseline-grid) 0;
-  }
+  .kd-nav {
+    background-color: transparent;
+    font-size: $body-font-size-base;
+    overflow-y: auto;
+    white-space: nowrap;
 
-  // Children of kd-nav should not shrink to prevent layout issues on IE.
-  & > * {
-    flex-shrink: 0;
-  }
-}
+    &.visible {
+      transition: width .3s;
+    }
 
-.kd-nav-group {
-  margin-right: $baseline-grid;
+    &.hidden {
+      transition: width .2s;
+      width: 0;
+    }
 
-  &:last-child {
-    > .kd-nav-item {
-      &:last-child {
-        padding-bottom: 2 * $baseline-grid;
+    .kd-nav-items {
+      padding: $content-padding 3px $content-padding $content-padding;
+
+      .mat-divider {
+        margin: $baseline-grid $baseline-grid (2 * $baseline-grid) (-1 * $content-padding);
       }
+    }
+
+    // Children of kd-nav should not shrink to prevent layout issues on IE.
+    & > * {
+      flex-shrink: 0;
     }
   }
 }
 
-.kd-nav-group-item {
-  margin-left: 1.5 * $baseline-grid;
-}
-
 .kd-nav-item {
-  margin-left: 3 * $baseline-grid;
+  margin-left: 1.5 * $baseline-grid;
 }

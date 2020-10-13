@@ -15,22 +15,24 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {NodeAddress, NodeDetail, NodeTaint} from '@api/backendapi';
-import {Subscription} from 'rxjs/Subscription';
+import {RatioItem} from '@api/frontendapi';
+import {Subject} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
+import {FormattedValue} from '../../../../common/components/graph/helper';
 
 import {ActionbarService, ResourceMeta} from '../../../../common/services/global/actionbar';
 import {NotificationsService} from '../../../../common/services/global/notifications';
 import {EndpointManager, Resource} from '../../../../common/services/resource/endpoint';
 import {ResourceService} from '../../../../common/services/resource/resource';
-import {RatioItem} from '@api/frontendapi';
-import {FormattedValue} from '../../../../common/components/graph/helper';
 
 @Component({
   selector: 'kd-node-detail',
   templateUrl: './template.html',
 })
 export class NodeDetailComponent implements OnInit, OnDestroy {
-  private nodeSubscription_: Subscription;
   private readonly endpoint_ = EndpointManager.resource(Resource.node);
+  private readonly unsubscribe_ = new Subject<void>();
+
   node: NodeDetail;
   isInitialized = false;
   podListEndpoint: string;
@@ -52,7 +54,7 @@ export class NodeDetailComponent implements OnInit, OnDestroy {
     private readonly node_: ResourceService<NodeDetail>,
     private readonly actionbar_: ActionbarService,
     private readonly activatedRoute_: ActivatedRoute,
-    private readonly notifications_: NotificationsService,
+    private readonly notifications_: NotificationsService
   ) {}
 
   ngOnInit(): void {
@@ -61,8 +63,9 @@ export class NodeDetailComponent implements OnInit, OnDestroy {
     this.podListEndpoint = this.endpoint_.child(resourceName, Resource.pod);
     this.eventListEndpoint = this.endpoint_.child(resourceName, Resource.event);
 
-    this.nodeSubscription_ = this.node_
+    this.node_
       .get(this.endpoint_.detail(), resourceName)
+      .pipe(takeUntil(this.unsubscribe_))
       .subscribe((d: NodeDetail) => {
         this.node = d;
         this._getAllocation();
@@ -73,39 +76,26 @@ export class NodeDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.nodeSubscription_.unsubscribe();
+    this.unsubscribe_.next();
+    this.unsubscribe_.complete();
     this.actionbar_.onDetailsLeave.emit();
   }
 
   private _getAllocation(): void {
-    const cpuLimitsValue = FormattedValue.NewFormattedCoreValue(
-      this.node.allocatedResources.cpuLimits,
-    );
-    const cpuRequestsValue = FormattedValue.NewFormattedCoreValue(
-      this.node.allocatedResources.cpuRequests,
-    );
-    const cpuCapacityValue = FormattedValue.NewFormattedCoreValue(
-      this.node.allocatedResources.cpuCapacity,
-    );
+    const cpuLimitsValue = FormattedValue.NewFormattedCoreValue(this.node.allocatedResources.cpuLimits);
+    const cpuRequestsValue = FormattedValue.NewFormattedCoreValue(this.node.allocatedResources.cpuRequests);
+    const cpuCapacityValue = FormattedValue.NewFormattedCoreValue(this.node.allocatedResources.cpuCapacity);
 
-    const memoryLimitsValue = FormattedValue.NewFormattedMemoryValue(
-      this.node.allocatedResources.memoryLimits,
-    );
-    const memoryRequestsValue = FormattedValue.NewFormattedMemoryValue(
-      this.node.allocatedResources.memoryRequests,
-    );
-    const memoryCapacityValue = FormattedValue.NewFormattedMemoryValue(
-      this.node.allocatedResources.memoryCapacity,
-    );
+    const memoryLimitsValue = FormattedValue.NewFormattedMemoryValue(this.node.allocatedResources.memoryLimits);
+    const memoryRequestsValue = FormattedValue.NewFormattedMemoryValue(this.node.allocatedResources.memoryRequests);
+    const memoryCapacityValue = FormattedValue.NewFormattedMemoryValue(this.node.allocatedResources.memoryCapacity);
 
     if (
       cpuLimitsValue.suffixPower !== cpuRequestsValue.suffixPower ||
       cpuLimitsValue.suffixPower !== cpuCapacityValue.suffixPower
     ) {
       const suffix =
-        cpuLimitsValue.suffixPower < cpuRequestsValue.suffixPower
-          ? cpuLimitsValue.suffix
-          : cpuRequestsValue.suffix;
+        cpuLimitsValue.suffixPower < cpuRequestsValue.suffixPower ? cpuLimitsValue.suffix : cpuRequestsValue.suffix;
 
       cpuLimitsValue.normalize(suffix);
       cpuRequestsValue.normalize(suffix);
@@ -126,16 +116,14 @@ export class NodeDetailComponent implements OnInit, OnDestroy {
       memoryCapacityValue.normalize(suffix);
     }
 
-    this.cpuLabel =
-      cpuRequestsValue.suffix.length > 0 ? `${cpuRequestsValue.suffix}cores` : 'Cores';
+    this.cpuLabel = cpuRequestsValue.suffix.length > 0 ? `${cpuRequestsValue.suffix}cores` : 'Cores';
     this.cpuCapacity = cpuCapacityValue.value;
     this.cpuAllocation = [
       {name: 'Requests', value: cpuRequestsValue.value},
       {name: 'Limits', value: cpuLimitsValue.value},
     ];
 
-    this.memoryLabel =
-      memoryRequestsValue.suffix.length > 0 ? `${memoryRequestsValue.suffix}B` : 'B';
+    this.memoryLabel = memoryRequestsValue.suffix.length > 0 ? `${memoryRequestsValue.suffix}B` : 'B';
     this.memoryCapacity = memoryCapacityValue.value;
     this.memoryAllocation = [
       {name: 'Requests', value: memoryRequestsValue.value},
@@ -151,9 +139,7 @@ export class NodeDetailComponent implements OnInit, OnDestroy {
 
   getTaints(): string[] {
     return this.node.taints.map((taint: NodeTaint) => {
-      return taint.value
-        ? `${taint.key}=${taint.value}:${taint.effect}`
-        : `${taint.key}=${taint.effect}`;
+      return taint.value ? `${taint.key}=${taint.value}:${taint.effect}` : `${taint.key}=${taint.effect}`;
     });
   }
 }

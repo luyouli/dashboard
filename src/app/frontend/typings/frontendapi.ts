@@ -62,6 +62,8 @@ export interface ColumnWhenCondition {
 export interface ActionColumn {
   setTypeMeta(typeMeta: TypeMeta): void;
   setObjectMeta(objectMeta: ObjectMeta): void;
+  setDisplayName(displayName: string): void;
+  setNamespaced(namespaced: boolean): void;
 }
 
 export interface HTMLInputEvent extends Event {
@@ -132,4 +134,9 @@ export interface PluginsConfig {
   status: number;
   plugins: PluginMetadata[];
   errors?: object[];
+}
+
+export interface ViewportMetadata {
+  target: HTMLElement;
+  visible: boolean;
 }

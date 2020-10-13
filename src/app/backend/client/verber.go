@@ -15,6 +15,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -40,6 +41,7 @@ type resourceVerber struct {
 	autoscalingClient   RESTClient
 	storageClient       RESTClient
 	rbacClient          RESTClient
+	networkingClient    RESTClient
 	apiExtensionsClient RESTClient
 	pluginsClient       RESTClient
 	config              *restclient.Config
@@ -68,6 +70,8 @@ func (verber *resourceVerber) getRESTClientByType(clientType api.ClientType) RES
 		return verber.storageClient
 	case api.ClientTypeRbacClient:
 		return verber.rbacClient
+	case api.ClientTypeNetworkingClient:
+		return verber.networkingClient
 	case api.ClientTypeAPIExtensionsClient:
 		return verber.apiExtensionsClient
 	case api.ClientTypePluginsClient:
@@ -118,7 +122,7 @@ func (verber *resourceVerber) getCRDGroupAndVersion(kind string) (info crdInfo, 
 	var crdv1 apiextensionsv1.CustomResourceDefinition
 	var crdv1beta1 apiextensionsv1beta1.CustomResourceDefinition
 
-	err = verber.apiExtensionsClient.Get().Resource("customresourcedefinitions").Name(kind).Do().Into(&crdv1)
+	err = verber.apiExtensionsClient.Get().Resource("customresourcedefinitions").Name(kind).Do(context.TODO()).Into(&crdv1)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return info, errors.NewInvalid(fmt.Sprintf("Unknown resource kind: %s", kind))
@@ -136,7 +140,7 @@ func (verber *resourceVerber) getCRDGroupAndVersion(kind string) (info crdInfo, 
 		return
 	}
 
-	err = verber.apiExtensionsClient.Get().Resource("customresourcedefinitions").Name(kind).Do().Into(&crdv1beta1)
+	err = verber.apiExtensionsClient.Get().Resource("customresourcedefinitions").Name(kind).Do(context.TODO()).Into(&crdv1beta1)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return info, errors.NewInvalid(fmt.Sprintf("Unknown resource kind: %s", kind))
@@ -163,9 +167,9 @@ type RESTClient interface {
 }
 
 // NewResourceVerber creates a new resource verber that uses the given client for performing operations.
-func NewResourceVerber(client, extensionsClient, appsClient, batchClient, betaBatchClient, autoscalingClient, storageClient, rbacClient, apiExtensionsClient, pluginsClient RESTClient, config *restclient.Config) clientapi.ResourceVerber {
+func NewResourceVerber(client, extensionsClient, appsClient, batchClient, betaBatchClient, autoscalingClient, storageClient, rbacClient, networkingClient, apiExtensionsClient, pluginsClient RESTClient, config *restclient.Config) clientapi.ResourceVerber {
 	return &resourceVerber{client, extensionsClient, appsClient,
-		batchClient, betaBatchClient, autoscalingClient, storageClient, rbacClient, apiExtensionsClient, pluginsClient, config}
+		batchClient, betaBatchClient, autoscalingClient, storageClient, rbacClient, networkingClient, apiExtensionsClient, pluginsClient, config}
 }
 
 // Delete deletes the resource of the given kind in the given namespace with the given name.
@@ -187,7 +191,7 @@ func (verber *resourceVerber) Delete(kind string, namespaceSet bool, namespace s
 		req.Namespace(namespace)
 	}
 
-	return req.Do().Error()
+	return req.Do(context.TODO()).Error()
 }
 
 // Put puts new resource version of the given kind in the given namespace with the given name.
@@ -209,7 +213,7 @@ func (verber *resourceVerber) Put(kind string, namespaceSet bool, namespace stri
 		req.Namespace(namespace)
 	}
 
-	return req.Do().Error()
+	return req.Do(context.TODO()).Error()
 }
 
 // Get gets the resource of the given kind in the given namespace with the given name.
@@ -226,6 +230,6 @@ func (verber *resourceVerber) Get(kind string, namespaceSet bool, namespace stri
 		req.Namespace(namespace)
 	}
 
-	err = req.Do().Into(result)
+	err = req.Do(context.TODO()).Into(result)
 	return result, err
 }

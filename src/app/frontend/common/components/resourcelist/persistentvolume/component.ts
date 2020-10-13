@@ -15,7 +15,7 @@
 import {HttpParams} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {PersistentVolume, PersistentVolumeList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -29,16 +29,13 @@ import {ListGroupIdentifier, ListIdentifier} from '../groupids';
   templateUrl: './template.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PersistentVolumeListComponent extends ResourceListWithStatuses<
-  PersistentVolumeList,
-  PersistentVolume
-> {
+export class PersistentVolumeListComponent extends ResourceListWithStatuses<PersistentVolumeList, PersistentVolume> {
   @Input() endpoint = EndpointManager.resource(Resource.persistentVolume).list();
 
   constructor(
     private readonly pv_: ResourceService<PersistentVolumeList>,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
     super('persistentvolume', notifications, cdr);
     this.id = ListIdentifier.persistentVolume;
@@ -95,7 +92,7 @@ export class PersistentVolumeListComponent extends ResourceListWithStatuses<
       'claim',
       'storagecl',
       'reason',
-      'age',
+      'created',
     ];
   }
 }

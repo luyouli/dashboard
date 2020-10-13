@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kubernetes/dashboard/src/app/backend/resource/networkpolicy"
+
 	"github.com/kubernetes/dashboard/src/app/backend/handler/parser"
 	"github.com/kubernetes/dashboard/src/app/backend/resource/customresourcedefinition/types"
 
@@ -63,6 +65,7 @@ import (
 	"github.com/kubernetes/dashboard/src/app/backend/resource/rolebinding"
 	"github.com/kubernetes/dashboard/src/app/backend/resource/secret"
 	resourceService "github.com/kubernetes/dashboard/src/app/backend/resource/service"
+	"github.com/kubernetes/dashboard/src/app/backend/resource/serviceaccount"
 	"github.com/kubernetes/dashboard/src/app/backend/resource/statefulset"
 	"github.com/kubernetes/dashboard/src/app/backend/resource/storageclass"
 	"github.com/kubernetes/dashboard/src/app/backend/scaling"
@@ -446,6 +449,27 @@ func CreateHTTPAPIHandler(iManager integration.IntegrationManager, cManager clie
 			Writes(pod.PodList{}))
 
 	apiV1Ws.Route(
+		apiV1Ws.GET("/serviceaccount").
+			To(apiHandler.handleGetServiceAccountList).
+			Writes(serviceaccount.ServiceAccountList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/serviceaccount/{namespace}").
+			To(apiHandler.handleGetServiceAccountList).
+			Writes(serviceaccount.ServiceAccountList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/serviceaccount/{namespace}/{serviceaccount}").
+			To(apiHandler.handleGetServiceAccountDetail).
+			Writes(serviceaccount.ServiceAccountDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/serviceaccount/{namespace}/{serviceaccount}/secret").
+			To(apiHandler.handleGetServiceAccountSecrets).
+			Writes(secret.SecretList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/serviceaccount/{namespace}/{serviceaccount}/imagepullsecret").
+			To(apiHandler.handleGetServiceAccountImagePullSecrets).
+			Writes(secret.SecretList{}))
+
+	apiV1Ws.Route(
 		apiV1Ws.GET("/ingress").
 			To(apiHandler.handleGetIngressList).
 			Writes(ingress.IngressList{}))
@@ -457,6 +481,19 @@ func CreateHTTPAPIHandler(iManager integration.IntegrationManager, cManager clie
 		apiV1Ws.GET("/ingress/{namespace}/{name}").
 			To(apiHandler.handleGetIngressDetail).
 			Writes(ingress.IngressDetail{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/networkpolicy").
+			To(apiHandler.handleGetNetworkPolicyList).
+			Writes(networkpolicy.NetworkPolicyList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/networkpolicy/{namespace}").
+			To(apiHandler.handleGetNetworkPolicyList).
+			Writes(networkpolicy.NetworkPolicyList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/networkpolicy/{namespace}/{networkpolicy}").
+			To(apiHandler.handleGetNetworkPolicyDetail).
+			Writes(networkpolicy.NetworkPolicyDetail{}))
 
 	apiV1Ws.Route(
 		apiV1Ws.GET("/statefulset").
@@ -903,6 +940,76 @@ func (apiHandler *APIHandler) handleGetServiceEvent(request *restful.Request, re
 	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
+func (apiHandler *APIHandler) handleGetServiceAccountList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	result, err := serviceaccount.GetServiceAccountList(k8sClient, namespace, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetServiceAccountDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("serviceaccount")
+	result, err := serviceaccount.GetServiceAccountDetail(k8sClient, namespace, name)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetServiceAccountImagePullSecrets(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("serviceaccount")
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	result, err := serviceaccount.GetServiceAccountImagePullSecrets(k8sClient, namespace, name, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetServiceAccountSecrets(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("serviceaccount")
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	result, err := serviceaccount.GetServiceAccountSecrets(k8sClient, namespace, name, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
 func (apiHandler *APIHandler) handleGetIngressDetail(request *restful.Request, response *restful.Response) {
 	k8sClient, err := apiHandler.cManager.Client(request)
 	if err != nil {
@@ -949,6 +1056,40 @@ func (apiHandler *APIHandler) handleGetServicePods(request *restful.Request, res
 	dataSelect := parser.ParseDataSelectPathParameter(request)
 	dataSelect.MetricQuery = dataselect.StandardMetrics
 	result, err := resourceService.GetServicePods(k8sClient, apiHandler.iManager.Metric().Client(), namespace, name, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetNetworkPolicyList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dataSelect := parser.ParseDataSelectPathParameter(request)
+	result, err := networkpolicy.GetNetworkPolicyList(k8sClient, namespace, dataSelect)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetNetworkPolicyDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		errors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("networkpolicy")
+	result, err := networkpolicy.GetNetworkPolicyDetail(k8sClient, namespace, name)
 	if err != nil {
 		errors.HandleInternalError(response, err)
 		return

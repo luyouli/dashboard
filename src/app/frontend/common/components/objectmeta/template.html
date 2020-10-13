@@ -52,7 +52,7 @@ limitations under the License.
       </kd-property>
       <kd-property [ngClass]="'object-meta-creation'">
         <div key
-             i18n>Creation time</div>
+             i18n>Created</div>
         <div value>
           <kd-date [date]="objectMeta?.creationTimestamp"></kd-date>
         </div>
@@ -78,7 +78,7 @@ limitations under the License.
              i18n>Labels</div>
         <div value>
           <kd-chips [map]="objectMeta?.labels"
-                    minChipsVisible="4"></kd-chips>
+                    [displayAll]="true"></kd-chips>
         </div>
       </kd-property>
       <kd-property *ngIf="objectMeta?.annotations"
@@ -88,7 +88,7 @@ limitations under the License.
              i18n>Annotations</div>
         <div value>
           <kd-chips [map]="objectMeta?.annotations"
-                    minChipsVisible="4"></kd-chips>
+                    [displayAll]="true"></kd-chips>
         </div>
       </kd-property>
     </div>

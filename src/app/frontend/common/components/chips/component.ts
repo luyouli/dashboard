@@ -12,13 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Component, Input, OnInit} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  Input,
+  OnChanges,
+  OnInit,
+  SimpleChanges,
+} from '@angular/core';
 import {MatDialog, MatDialogConfig} from '@angular/material/dialog';
 import {StringMap} from '@api/backendapi';
 
+import {GlobalSettingsService} from '../../services/global/globalsettings';
+
 import {ChipDialog} from './chipdialog/dialog';
 
-const truncateUrl = require('truncate-url');
+// @ts-ignore
+import * as truncateUrl from 'truncate-url';
 
 export interface Chip {
   key: string;
@@ -36,7 +47,7 @@ const URL_REGEXP = new RegExp(
     '){2}(?:\\.(?:[1-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]-*)*' +
     '[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]-*)*[a-z\\u00a1-\\uffff0-9]' +
     '+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,}))\\.?)(?::\\d{2,5})?(?:[/?#]\\S*)?$',
-  'i',
+  'i'
 );
 
 const MAX_CHIP_VALUE_LENGTH = 63;
@@ -44,16 +55,33 @@ const MAX_CHIP_VALUE_LENGTH = 63;
 @Component({
   selector: 'kd-chips',
   templateUrl: './template.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChipsComponent implements OnInit {
+export class ChipsComponent implements OnInit, OnChanges {
   @Input() map: StringMap | string[];
-  @Input() minChipsVisible = 2;
+  @Input() displayAll = false;
   keys: string[];
   isShowingAll = false;
+  private _labelsLimit = 3;
 
-  constructor(private readonly dialog_: MatDialog) {}
+  constructor(
+    private readonly _globalSettingsService: GlobalSettingsService,
+    private readonly _matDialog: MatDialog,
+    private readonly _changeDetectorRef: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
+    this._labelsLimit = this._globalSettingsService.getLabelsLimit();
+    this.processMap();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes.map) {
+      this.processMap();
+    }
+  }
+
+  private processMap() {
     if (!this.map) {
       this.map = [];
     }
@@ -63,14 +91,15 @@ export class ChipsComponent implements OnInit {
     } else {
       this.keys = Object.keys(this.map);
     }
+    this._changeDetectorRef.markForCheck();
   }
 
   isVisible(index: number): boolean {
-    return this.isShowingAll || index < this.minChipsVisible;
+    return this.isShowingAll || index < this._labelsLimit || this.displayAll;
   }
 
   isAnythingHidden(): boolean {
-    return this.keys.length > this.minChipsVisible;
+    return this.keys.length > this._labelsLimit && !this.displayAll;
   }
 
   toggleView(): void {
@@ -97,6 +126,6 @@ export class ChipsComponent implements OnInit {
         value,
       },
     };
-    this.dialog_.open(ChipDialog, dialogConfig);
+    this._matDialog.open(ChipDialog, dialogConfig);
   }
 }

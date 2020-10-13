@@ -31,8 +31,9 @@ limitations under the License.
          [isLoading]="isLoading"></div>
 
     <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource"
                matSort
-               matSortActive="age"
+               matSortActive="created"
                matSortDisableClear
                matSortDirection="asc">
       <ng-container matColumnDef="name">
@@ -64,11 +65,11 @@ limitations under the License.
         <mat-cell *matCellDef="let plugin">{{plugin.objectMeta.namespace}}</mat-cell>
       </ng-container>
 
-      <ng-container matColumnDef="age">
+      <ng-container matColumnDef="created">
         <mat-header-cell *matHeaderCellDef
                          mat-sort-header
                          disableClear="true"
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let plugin">
           <kd-date [date]="plugin.objectMeta.creationTimestamp"
                    relative></kd-date>

@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'rxjs/add/operator/first';
-import 'rxjs/add/operator/switchMap';
-
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Injectable} from '@angular/core';
 import {Router} from '@angular/router';
 import {CookieService} from 'ngx-cookie-service';
 import {of} from 'rxjs';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {first, switchMap} from 'rxjs/operators';
 import {AuthResponse, CsrfToken, LoginSpec, LoginStatus} from 'typings/backendapi';
 
@@ -39,7 +36,7 @@ export class AuthService {
     private readonly router_: Router,
     private readonly http_: HttpClient,
     private readonly csrfTokenService_: CsrfTokenService,
-    private readonly stateService_: KdStateService,
+    private readonly stateService_: KdStateService
   ) {
     this.init_();
   }
@@ -53,32 +50,30 @@ export class AuthService {
   }
 
   private setTokenCookie_(token: string): void {
-    // This will only work for HTTPS connection
-    this.cookies_.set(this._config.authTokenCookieName, token, null, null, null, true, 'Strict');
-    // This will only work when accessing Dashboard at 'localhost' or
-    // '127.0.0.1'
-    this.cookies_.set(
-      this._config.authTokenCookieName,
-      token,
-      null,
-      null,
-      'localhost',
-      false,
-      'Strict',
-    );
-    this.cookies_.set(
-      this._config.authTokenCookieName,
-      token,
-      null,
-      null,
-      '127.0.0.1',
-      false,
-      'Strict',
-    );
+    if (!this.isLoginEnabled()) {
+      return;
+    }
+
+    if (this.isCurrentProtocolSecure_()) {
+      this.cookies_.set(this._config.authTokenCookieName, token, null, null, null, true, 'Strict');
+      return;
+    }
+
+    if (this.isCurrentDomainSecure_()) {
+      this.cookies_.set(this._config.authTokenCookieName, token, null, null, location.hostname, false, 'Strict');
+    }
   }
 
   private getTokenCookie_(): string {
     return this.cookies_.get(this._config.authTokenCookieName) || '';
+  }
+
+  private isCurrentDomainSecure_(): boolean {
+    return ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1;
+  }
+
+  private isCurrentProtocolSecure_(): boolean {
+    return location.protocol.includes('https');
   }
 
   removeAuthCookies(): void {
@@ -96,8 +91,8 @@ export class AuthService {
         switchMap((csrfToken: CsrfToken) =>
           this.http_.post<AuthResponse>('api/v1/login', loginSpec, {
             headers: new HttpHeaders().set(this._config.csrfHeaderName, csrfToken.token),
-          }),
-        ),
+          })
+        )
       )
       .pipe(
         switchMap((authResponse: AuthResponse) => {
@@ -106,7 +101,7 @@ export class AuthService {
           }
 
           return of(authResponse.errors);
-        }),
+        })
       );
   }
 
@@ -132,9 +127,9 @@ export class AuthService {
             {jweToken: token},
             {
               headers: new HttpHeaders().set(this._config.csrfHeaderName, csrfToken.token),
-            },
+            }
           );
-        }),
+        })
       )
       .pipe(first())
       .subscribe((authResponse: AuthResponse) => {
@@ -166,15 +161,7 @@ export class AuthService {
 
   skipLoginPage(skip: boolean): void {
     this.removeAuthCookies();
-    this.cookies_.set(
-      this._config.skipLoginPageCookieName,
-      skip.toString(),
-      null,
-      null,
-      null,
-      false,
-      'Strict',
-    );
+    this.cookies_.set(this._config.skipLoginPageCookieName, skip.toString(), null, null, null, false, 'Strict');
   }
 
   /**
@@ -184,5 +171,13 @@ export class AuthService {
    */
   isLoginPageEnabled(): boolean {
     return !(this.cookies_.get(this._config.skipLoginPageCookieName) === 'true');
+  }
+
+  /**
+   * Returns true if domain is localhost/127.0.0.1 or if the connection
+   * protocol is HTTPS, false otherwise.
+   */
+  isLoginEnabled(): boolean {
+    return this.isCurrentDomainSecure_() || this.isCurrentProtocolSecure_();
   }
 }

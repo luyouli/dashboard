@@ -31,6 +31,7 @@ limitations under the License.
   <div content
        [hidden]="!quotas?.length">
     <mat-table [dataSource]="getDataSource()"
+               [trackBy]="trackByResourceQuotaDetail"
                class="kd-table-no-footer">
       <ng-container [matColumnDef]="getQuotaColumns()[0]">
         <mat-header-cell *matHeaderCellDef
@@ -39,7 +40,7 @@ limitations under the License.
       </ng-container>
       <ng-container [matColumnDef]="getQuotaColumns()[1]">
         <mat-header-cell *matHeaderCellDef
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let quota">
           <kd-date *ngIf="quota.objectMeta.creationTimestamp"
                    [date]="quota.objectMeta.creationTimestamp"

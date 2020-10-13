@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {HorizontalPodAutoscaler, HorizontalPodAutoscalerList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
 import {EndpointManager, Resource} from '../../../services/resource/endpoint';
@@ -41,14 +35,11 @@ export class HorizontalPodAutoscalerListComponent extends ResourceListWithStatus
   @Input() endpoint = EndpointManager.resource(Resource.horizontalPodAutoscaler, true).list();
 
   constructor(
-    private readonly horizontalpodautoscaler_: NamespacedResourceService<
-      HorizontalPodAutoscalerList
-    >,
+    private readonly horizontalpodautoscaler_: NamespacedResourceService<HorizontalPodAutoscalerList>,
     notifications: NotificationsService,
-    resolver: ComponentFactoryResolver,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('horizontalpodautoscaler', notifications, cdr, resolver);
+    super('horizontalpodautoscaler', notifications, cdr);
     this.id = ListIdentifier.horizontalpodautoscaler;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -68,7 +59,7 @@ export class HorizontalPodAutoscalerListComponent extends ResourceListWithStatus
   }
 
   getDisplayColumns(): string[] {
-    return ['name', 'minpods', 'maxpods', 'scaletargetref', 'age'];
+    return ['name', 'minpods', 'maxpods', 'scaletargetref', 'created'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

@@ -33,6 +33,12 @@ export interface ObjectMeta {
   uid?: string;
 }
 
+export interface JobStatus {
+  status: string;
+  message: string;
+  conditions: Condition[];
+}
+
 export interface ResourceDetail {
   objectMeta: ObjectMeta;
   typeMeta: TypeMeta;
@@ -68,6 +74,18 @@ export interface CapacityItem {
 // List types
 export interface ClusterRoleList extends ResourceList {
   items: ClusterRole[];
+}
+
+export interface ClusterRoleBindingList extends ResourceList {
+  items: ClusterRoleBinding[];
+}
+
+export interface RoleList extends ResourceList {
+  items: Role[];
+}
+
+export interface RoleBindingList extends ResourceList {
+  items: RoleBinding[];
 }
 
 export interface ConfigMapList extends ResourceList {
@@ -115,6 +133,14 @@ export interface HorizontalPodAutoscalerList extends ResourceList {
 
 export interface IngressList extends ResourceList {
   items: Ingress[];
+}
+
+export interface ServiceAccountList extends ResourceList {
+  items: ServiceAccount[];
+}
+
+export interface NetworkPolicyList extends ResourceList {
+  items: NetworkPolicy[];
 }
 
 export interface JobList extends ResourceList {
@@ -185,9 +211,19 @@ export interface StorageClassList extends ResourceList {
 }
 
 // Simple detail types
-export interface ClusterRole extends Resource {}
+export type ClusterRole = Resource;
 
-export interface ConfigMap extends Resource {}
+export type ClusterRoleBinding = Resource;
+
+export type Role = Resource;
+
+export type RoleBinding = Resource;
+
+export type ConfigMap = Resource;
+
+export type ServiceAccount = Resource;
+
+export type NetworkPolicy = Resource;
 
 export interface Controller extends Resource {
   pods: PodInfo;
@@ -209,7 +245,7 @@ export interface CRD extends Resource {
   established: string;
 }
 
-export interface CRDObject extends Resource {}
+export type CRDObject = Resource;
 
 export interface DaemonSet extends Resource {
   podInfo: PodInfo;
@@ -435,12 +471,48 @@ export interface ClusterRoleDetail extends ResourceDetail {
   rules: PolicyRule[];
 }
 
+export interface Subject {
+  kind: string;
+  apiGroup: string;
+  name: string;
+  namespace: string;
+}
+
+export interface RoleRef {
+  kind: string;
+  apiGroup: string;
+  name: string;
+}
+
+export interface ClusterRoleBindingDetail extends ResourceDetail {
+  subjects: Subject[];
+  roleRef: RoleRef;
+}
+
+export interface RoleDetail extends ResourceDetail {
+  rules: PolicyRule[];
+}
+
+export interface RoleBindingDetail extends ResourceDetail {
+  subjects: Subject[];
+  roleRef: RoleRef;
+}
+
 export interface SecretDetail extends ResourceDetail {
   type: string;
   data: StringMap;
 }
 
-export interface IngressDetail extends ResourceDetail {}
+export type ServiceAccountDetail = ResourceDetail;
+
+export type IngressDetail = ResourceDetail;
+
+export interface NetworkPolicyDetail extends ResourceDetail {
+  podSelector: LabelSelector;
+  ingress?: any;
+  egress?: any;
+  policyTypes?: string[];
+}
 
 export interface PersistentVolumeClaimDetail extends ResourceDetail {
   status: string;
@@ -470,7 +542,7 @@ export interface CRDDetail extends ResourceDetail {
   subresources: string[];
 }
 
-export interface CRDObjectDetail extends ResourceDetail {}
+export type CRDObjectDetail = ResourceDetail;
 
 export interface JobDetail extends ResourceDetail {
   podInfo: PodInfo;
@@ -480,6 +552,7 @@ export interface JobDetail extends ResourceDetail {
   eventList: EventList;
   parallelism: number;
   completions: number;
+  jobStatus: JobStatus;
 }
 
 export interface CronJobDetail extends ResourceDetail {
@@ -1040,14 +1113,18 @@ export interface ScaleTargetRef {
 export interface GlobalSettings {
   clusterName: string;
   itemsPerPage: number;
+  labelsLimit: number;
   logsAutoRefreshTimeInterval: number;
   resourceAutoRefreshTimeInterval: number;
+  disableAccessDeniedNotifications: boolean;
 }
 
 export interface PinnedResource {
   kind: string;
   name: string;
+  displayName: string;
   namespace?: string;
+  namespaced: boolean;
 }
 
 export interface APIVersion {

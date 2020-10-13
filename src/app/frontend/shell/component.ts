@@ -23,18 +23,12 @@ import {
 } from '@angular/core';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ActivatedRoute, Router} from '@angular/router';
-import {
-  PodContainerList,
-  ShellFrame,
-  SJSCloseEvent,
-  SJSMessageEvent,
-  TerminalResponse,
-} from '@api/backendapi';
+import {PodContainerList, ShellFrame, SJSCloseEvent, SJSMessageEvent, TerminalResponse} from '@api/backendapi';
 import {debounce} from 'lodash';
 import {ReplaySubject, Subject, Subscription} from 'rxjs';
 import {takeUntil} from 'rxjs/operators';
 import {Terminal} from 'xterm';
-import {fit} from 'xterm/lib/addons/fit/fit';
+import {FitAddon} from 'xterm-addon-fit';
 
 import {EndpointManager, Resource, Utility} from '../common/services/resource/endpoint';
 import {NamespacedResourceService} from '../common/services/resource/resource';
@@ -73,16 +67,12 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
     private readonly activatedRoute_: ActivatedRoute,
     private readonly matSnackBar_: MatSnackBar,
     private readonly cdr_: ChangeDetectorRef,
-    private readonly _router: Router,
+    private readonly _router: Router
   ) {
     this.namespace_ = this.activatedRoute_.snapshot.params.resourceNamespace;
     this.podName = this.activatedRoute_.snapshot.params.resourceName;
 
-    const containersEndpoint = this.endpoint_.child(
-      this.podName,
-      Resource.container,
-      this.namespace_,
-    );
+    const containersEndpoint = this.endpoint_.child(this.podName, Resource.container, this.namespace_);
     this.containers_
       .get(containersEndpoint)
       .pipe(takeUntil(this.unsubscribe_))
@@ -170,9 +160,11 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
       cursorBlink: true,
     });
 
+    const fitAddon = new FitAddon();
+    this.term.loadAddon(fitAddon);
     this.term.open(this.anchorRef.nativeElement);
     this.debouncedFit_ = debounce(() => {
-      fit(this.term);
+      fitAddon.fit();
       this.cdr_.markForCheck();
     }, 100);
     this.debouncedFit_();
@@ -182,10 +174,10 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
       this.handleConnectionMessage(frame);
     });
 
-    this.term.on('data', this.onTerminalSendString.bind(this));
-    this.term.on('resize', this.onTerminalResize.bind(this));
-    this.term.on('key', (_, event) => {
-      this.keyEvent$_.next(event);
+    this.term.onData(this.onTerminalSendString.bind(this));
+    this.term.onResize(this.onTerminalResize.bind(this));
+    this.term.onKey(event => {
+      this.keyEvent$_.next(event.domEvent);
     });
 
     this.cdr_.markForCheck();
@@ -199,10 +191,9 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
     this.connecting_ = true;
     this.connectionClosed_ = false;
 
-    const terminalSessionUrl = `${EndpointManager.utility(Utility.shell).shell(
-      this.namespace_,
-      this.podName,
-    )}/${this.selectedContainer}`;
+    const terminalSessionUrl = `${EndpointManager.utility(Utility.shell).shell(this.namespace_, this.podName)}/${
+      this.selectedContainer
+    }`;
     const {id} = await this.utility_.shell(terminalSessionUrl).toPromise();
 
     this.conn_ = new SockJS(`api/sockjs?${id}`);
@@ -268,7 +259,7 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
           Data: str,
           Cols: this.term.cols,
           Rows: this.term.rows,
-        }),
+        })
       );
     }
   }
@@ -280,7 +271,7 @@ export class ShellComponent implements AfterViewInit, OnDestroy {
           Op: 'resize',
           Cols: this.term.cols,
           Rows: this.term.rows,
-        }),
+        })
       );
     }
   }

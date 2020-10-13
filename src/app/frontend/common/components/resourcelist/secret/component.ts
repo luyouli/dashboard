@@ -14,7 +14,7 @@
 
 import {HttpParams} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {Secret, SecretList} from 'typings/backendapi';
 import {ResourceListBase} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -29,12 +29,13 @@ import {ListGroupIdentifier, ListIdentifier} from '../groupids';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecretListComponent extends ResourceListBase<SecretList, Secret> {
+  @Input() title = 'Secrets';
   @Input() endpoint = EndpointManager.resource(Resource.secret, true).list();
 
   constructor(
     private readonly secret_: NamespacedResourceService<SecretList>,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
     super('secret', notifications, cdr);
     this.id = ListIdentifier.secret;
@@ -56,7 +57,7 @@ export class SecretListComponent extends ResourceListBase<SecretList, Secret> {
   }
 
   getDisplayColumns(): string[] {
-    return ['name', 'labels', 'type', 'age'];
+    return ['name', 'labels', 'type', 'created'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

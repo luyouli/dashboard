@@ -16,19 +16,14 @@ import {DataSource} from '@angular/cdk/collections';
 import {HttpParams} from '@angular/common/http';
 import {
   ChangeDetectorRef,
-  ComponentFactoryResolver,
+  Directive,
   EventEmitter,
-  Inject,
   Input,
   OnDestroy,
   OnInit,
   Output,
-  QueryList,
   Type,
   ViewChild,
-  ViewChildren,
-  ViewContainerRef,
-  Directive,
 } from '@angular/core';
 import {MatPaginator} from '@angular/material/paginator';
 import {MatSort} from '@angular/material/sort';
@@ -42,14 +37,10 @@ import {
   ColumnWhenCondition,
   OnListChangeEvent,
 } from '@api/frontendapi';
-import {Subject} from 'rxjs';
-import {Observable, ObservableInput} from 'rxjs/Observable';
-import {merge} from 'rxjs/observable/merge';
-import {startWith, switchMap, takeUntil} from 'rxjs/operators';
+import {isObservable, merge, Observable, ObservableInput, Subject} from 'rxjs';
+import {startWith, switchMap, takeUntil, tap} from 'rxjs/operators';
 
 import {CardListFilterComponent} from '../components/list/filter/component';
-import {RowDetailComponent} from '../components/list/rowdetail/component';
-import {ListIdentifier} from '../components/resourcelist/groupids';
 import {SEARCH_QUERY_STATE_PARAM} from '../params/params';
 import {GlobalSettingsService} from '../services/global/globalsettings';
 import {GlobalServicesModule} from '../services/global/module';
@@ -59,17 +50,17 @@ import {ParamsService} from '../services/global/params';
 import {KdStateService} from '../services/global/state';
 
 @Directive()
-export abstract class ResourceListBase<T extends ResourceList, R extends Resource>
-  implements OnInit, OnDestroy {
+export abstract class ResourceListBase<T extends ResourceList, R extends Resource> implements OnInit, OnDestroy {
   // Base properties
   private readonly actionColumns_: Array<ActionColumnDef<ActionColumn>> = [];
   private readonly data_ = new MatTableDataSource<R>();
+  private stateName_ = '';
   private listUpdates_ = new Subject();
-  private unsubscribe_ = new Subject<void>();
   private loaded_ = false;
   private readonly dynamicColumns_: ColumnWhenCondition[] = [];
   private paramsService_: ParamsService;
   private router_: Router;
+  protected readonly unsubscribe_ = new Subject<void>();
   protected readonly kdState_: KdStateService;
   protected readonly settingsService_: GlobalSettingsService;
   protected readonly namespaceService_: NamespaceService;
@@ -94,15 +85,16 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
   private readonly cardFilter_: CardListFilterComponent;
 
   protected constructor(
-    private readonly stateName_: string,
+    stateName: string | Observable<string>,
     private readonly notifications_: NotificationsService,
-    private readonly cdr_: ChangeDetectorRef,
+    protected readonly cdr_: ChangeDetectorRef
   ) {
     this.settingsService_ = GlobalServicesModule.injector.get(GlobalSettingsService);
     this.kdState_ = GlobalServicesModule.injector.get(KdStateService);
     this.namespaceService_ = GlobalServicesModule.injector.get(NamespaceService);
     this.paramsService_ = GlobalServicesModule.injector.get(ParamsService);
     this.router_ = GlobalServicesModule.injector.get(Router);
+    this.initStateName_(stateName);
   }
 
   ngOnInit(): void {
@@ -126,12 +118,8 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
 
     this.getObservableWithDataSelect_()
       .pipe(startWith({}))
-      .pipe(
-        switchMap(() => {
-          this.isLoading = true;
-          return this.getResourceObservable(this.getDataSelectParams_());
-        }),
-      )
+      .pipe(tap(_ => (this.isLoading = true)))
+      .pipe(switchMap(() => this.getResourceObservable(this.getDataSelectParams_())))
       .pipe(takeUntil(this.unsubscribe_))
       .subscribe((data: T) => {
         this.notifications_.pushErrors(data.errors);
@@ -142,7 +130,7 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
         this.onListChange_(data);
 
         if (this.cdr_) {
-          this.cdr_.detectChanges();
+          this.cdr_.markForCheck();
         }
       });
   }
@@ -158,6 +146,18 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
 
   getData(): DataSource<R> {
     return this.data_;
+  }
+
+  trackByResource(_: number, item: R): string {
+    if (item.objectMeta.uid) {
+      return item.objectMeta.uid;
+    }
+
+    if (item.objectMeta.namespace) {
+      return `${item.objectMeta.namespace}/${item.objectMeta.name}`;
+    }
+
+    return item.objectMeta.name;
   }
 
   showZeroState(): boolean {
@@ -204,16 +204,20 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
     } as ActionColumnDef<ActionColumn>);
   }
 
-  protected registerDynamicColumn(
-    col: string,
-    afterCol: string,
-    whenCallback: ColumnWhenCallback,
-  ): void {
+  protected registerDynamicColumn(col: string, afterCol: string, whenCallback: ColumnWhenCallback): void {
     this.dynamicColumns_.push({
       col,
       afterCol,
       whenCallback,
     } as ColumnWhenCondition);
+  }
+
+  private initStateName_(stateName: string | Observable<string>): void {
+    if (isObservable(stateName)) {
+      stateName.pipe(takeUntil(this.unsubscribe_)).subscribe(name => (this.stateName_ = name));
+    } else {
+      this.stateName_ = stateName;
+    }
   }
 
   private getObservableWithDataSelect_<E>(): Observable<E> {
@@ -261,9 +265,7 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
       result = params;
     }
 
-    return result
-      .set('itemsPerPage', `${this.itemsPerPage}`)
-      .set('page', `${this.matPaginator_.pageIndex + 1}`);
+    return result.set('itemsPerPage', `${this.itemsPerPage}`).set('page', `${this.matPaginator_.pageIndex + 1}`);
   }
 
   private filter_(params?: HttpParams): HttpParams {
@@ -311,7 +313,7 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
   private getSortBy_(): string {
     // Default values.
     let ascending = true;
-    let active = 'age';
+    let active = 'created';
 
     if (this.matSort_.direction) {
       ascending = this.matSort_.direction === 'asc';
@@ -321,7 +323,7 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
       active = this.matSort_.active;
     }
 
-    if (active === 'age') {
+    if (active === 'created') {
       ascending = !ascending;
     }
 
@@ -329,7 +331,7 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
   }
 
   private mapToBackendValue_(sortByColumnName: string): string {
-    return sortByColumnName === 'age' ? 'creationTimestamp' : sortByColumnName;
+    return sortByColumnName === 'created' ? 'creationTimestamp' : sortByColumnName;
   }
 
   private onListChange_(data: T): void {
@@ -356,13 +358,11 @@ export abstract class ResourceListBase<T extends ResourceList, R extends Resourc
 }
 
 @Directive()
-export abstract class ResourceListWithStatuses<
-  T extends ResourceList,
-  R extends Resource
-> extends ResourceListBase<T, R> {
+export abstract class ResourceListWithStatuses<T extends ResourceList, R extends Resource> extends ResourceListBase<
+  T,
+  R
+> {
   private readonly bindings_: {[hash: number]: StateBinding<R>} = {};
-  @ViewChildren('matrow', {read: ViewContainerRef})
-  private readonly containers_: QueryList<ViewContainerRef>;
   private lastHash_: number;
   private readonly unknownStatus: StatusIcon = {
     iconName: 'help',
@@ -371,18 +371,15 @@ export abstract class ResourceListWithStatuses<
 
   protected icon = IconName;
 
-  expandedRow: number = undefined;
-  hoveredRow: number = undefined;
+  expandedRowKey: string = undefined;
+  hoveredRowKey: string = undefined;
 
   protected constructor(
     stateName: string,
     private readonly notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
-    private readonly resolver_?: ComponentFactoryResolver,
+    cdr: ChangeDetectorRef
   ) {
     super(stateName, notifications, cdr);
-
-    this.onChange.subscribe(this.clearExpandedRows_.bind(this));
   }
 
   expand(index: number, resource: R): void {
@@ -390,21 +387,18 @@ export abstract class ResourceListWithStatuses<
       return;
     }
 
-    if (this.expandedRow !== undefined) {
-      this.containers_.toArray()[this.expandedRow].clear();
-    }
+    const rowKey = this.trackByResource(index, resource);
 
-    if (this.expandedRow === index) {
-      this.expandedRow = undefined;
+    if (this.expandedRowKey === rowKey) {
+      this.expandedRowKey = undefined;
       return;
     }
 
-    const container = this.containers_.toArray()[index];
-    const factory = this.resolver_.resolveComponentFactory(RowDetailComponent);
-    const component = container.createComponent(factory);
+    this.expandedRowKey = rowKey;
 
-    component.instance.events = this.getEvents(resource);
-    this.expandedRow = index;
+    if (this.cdr_) {
+      this.cdr_.markForCheck();
+    }
   }
 
   getStatus(resource: R): StatusIcon {
@@ -428,24 +422,24 @@ export abstract class ResourceListWithStatuses<
     return this.unknownStatus;
   }
 
-  isRowExpanded(index: number): boolean {
-    return this.expandedRow === index;
+  isRowExpanded(index: number, resource: R): boolean {
+    return this.expandedRowKey === this.trackByResource(index, resource) && this.hasErrors(resource);
   }
 
-  isRowHovered(index: number): boolean {
-    return this.hoveredRow === index;
+  isRowHovered(index: number, resource: R): boolean {
+    return this.hoveredRowKey === this.trackByResource(index, resource);
   }
 
-  onRowOver(rowIdx: number): void {
-    this.hoveredRow = rowIdx;
+  onRowOver(rowIdx: number, resource: R): void {
+    this.hoveredRowKey = this.trackByResource(rowIdx, resource);
   }
 
   onRowLeave(): void {
-    this.hoveredRow = undefined;
+    this.hoveredRowKey = undefined;
   }
 
   showHoverIcon(index: number, resource: R): boolean {
-    return this.isRowHovered(index) && this.hasErrors(resource) && !this.isRowExpanded(index);
+    return this.isRowHovered(index, resource) && this.hasErrors(resource) && !this.isRowExpanded(index, resource);
   }
 
   protected getEvents(_resource: R): KdEvent[] {
@@ -456,21 +450,9 @@ export abstract class ResourceListWithStatuses<
     return false;
   }
 
-  protected registerBinding(
-    iconName: IconName,
-    iconClass: string,
-    callbackFunction: StatusCheckCallback<R>,
-  ): void {
+  protected registerBinding(iconName: IconName, iconClass: string, callbackFunction: StatusCheckCallback<R>): void {
     const icon = new Icon(String(iconName), iconClass);
     this.bindings_[icon.hash()] = {icon, callbackFunction};
-  }
-
-  private clearExpandedRows_(): void {
-    const containers = this.containers_.toArray();
-    for (let i = 0; i < containers.length; i++) {
-      containers[i].clear();
-      this.expandedRow = undefined;
-    }
   }
 
   private getStatusObject_(stateBinding: StateBinding<R>): StatusIcon {

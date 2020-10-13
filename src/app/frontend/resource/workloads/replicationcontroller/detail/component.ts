@@ -15,7 +15,8 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {ReplicationControllerDetail} from '@api/backendapi';
-import {Subscription} from 'rxjs/Subscription';
+import {Subject} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
 
 import {ActionbarService, ResourceMeta} from '../../../../common/services/global/actionbar';
 import {NotificationsService} from '../../../../common/services/global/notifications';
@@ -27,8 +28,9 @@ import {NamespacedResourceService} from '../../../../common/services/resource/re
   templateUrl: './template.html',
 })
 export class ReplicationControllerDetailComponent implements OnInit, OnDestroy {
-  private replicationControllerSubscription_: Subscription;
   private readonly endpoint_ = EndpointManager.resource(Resource.replicationController, true);
+  private readonly unsubscribe_ = new Subject<void>();
+
   replicationController: ReplicationControllerDetail;
   isInitialized = false;
   eventListEndpoint: string;
@@ -39,7 +41,7 @@ export class ReplicationControllerDetailComponent implements OnInit, OnDestroy {
     private readonly replicationController_: NamespacedResourceService<ReplicationControllerDetail>,
     private readonly actionbar_: ActionbarService,
     private readonly activatedRoute_: ActivatedRoute,
-    private readonly notifications_: NotificationsService,
+    private readonly notifications_: NotificationsService
   ) {}
 
   ngOnInit(): void {
@@ -48,26 +50,22 @@ export class ReplicationControllerDetailComponent implements OnInit, OnDestroy {
 
     this.eventListEndpoint = this.endpoint_.child(resourceName, Resource.event, resourceNamespace);
     this.podListEndpoint = this.endpoint_.child(resourceName, Resource.pod, resourceNamespace);
-    this.serviceListEndpoint = this.endpoint_.child(
-      resourceName,
-      Resource.service,
-      resourceNamespace,
-    );
+    this.serviceListEndpoint = this.endpoint_.child(resourceName, Resource.service, resourceNamespace);
 
-    this.replicationControllerSubscription_ = this.replicationController_
+    this.replicationController_
       .get(this.endpoint_.detail(), resourceName, resourceNamespace)
+      .pipe(takeUntil(this.unsubscribe_))
       .subscribe((d: ReplicationControllerDetail) => {
         this.replicationController = d;
         this.notifications_.pushErrors(d.errors);
-        this.actionbar_.onInit.emit(
-          new ResourceMeta('Replication Controller', d.objectMeta, d.typeMeta),
-        );
+        this.actionbar_.onInit.emit(new ResourceMeta('Replication Controller', d.objectMeta, d.typeMeta));
         this.isInitialized = true;
       });
   }
 
   ngOnDestroy(): void {
-    this.replicationControllerSubscription_.unsubscribe();
+    this.unsubscribe_.next();
+    this.unsubscribe_.complete();
     this.actionbar_.onDetailsLeave.emit();
   }
 }

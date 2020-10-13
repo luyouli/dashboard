@@ -20,11 +20,10 @@ import {LogDetails, LogLine, LogSelection, LogSources} from '@api/backendapi';
 import {GlobalSettingsService} from 'common/services/global/globalsettings';
 import {LogService} from 'common/services/global/logs';
 import {NotificationSeverity, NotificationsService} from 'common/services/global/notifications';
-import {Observable, Subscription} from 'rxjs';
+import {Observable, Subject, Subscription, timer} from 'rxjs';
+import {switchMap, takeUntil, tap} from 'rxjs/operators';
 
 import {LogsDownloadDialog} from '../common/dialogs/download/dialog';
-import {NAMESPACE_STATE_PARAM} from '../common/params/params';
-import {CONFIG} from '../index.config';
 
 const logsPerView = 100;
 const maxLogSize = 2e9;
@@ -39,8 +38,7 @@ const newestTimestamp = 'newest';
 
 const i18n = {
   MSG_LOGS_ZEROSTATE_TEXT: 'The selected container has not logged any messages yet.',
-  MSG_LOGS_TRUNCATED_WARNING:
-    'The middle part of the log file cannot be loaded, because it is too big.',
+  MSG_LOGS_TRUNCATED_WARNING: 'The middle part of the log file cannot be loaded, because it is too big.',
 };
 
 type ScrollPosition = 'TOP' | 'BOTTOM';
@@ -51,7 +49,13 @@ type ScrollPosition = 'TOP' | 'BOTTOM';
   styleUrls: ['./style.scss'],
 })
 export class LogsComponent implements OnDestroy {
+  private refreshUnsubscribe_ = new Subject<void>();
+  private unsubscribe_ = new Subject<void>();
+
+  readonly refreshInterval: number;
+
   @ViewChild('logViewContainer', {static: true}) logViewContainer_: ElementRef;
+
   podLogs: LogDetails;
   logsSet: string[];
   logSources: LogSources;
@@ -61,11 +65,8 @@ export class LogsComponent implements OnDestroy {
   totalItems = 0;
   itemsPerPage = 10;
   currentSelection: LogSelection;
-  refreshInterval = 5000;
-  intervalSubscription: Subscription;
-  sourceSubscription: Subscription;
-  logsSubscription: Subscription;
   isLoading: boolean;
+  logsAutorefreshEnabled = false;
 
   constructor(
     logService: LogService,
@@ -73,32 +74,34 @@ export class LogsComponent implements OnDestroy {
     private readonly settingsService_: GlobalSettingsService,
     private readonly dialog_: MatDialog,
     private readonly notifications_: NotificationsService,
-    private readonly _router: Router,
+    private readonly _router: Router
   ) {
     this.logService = logService;
-    this.refreshInterval = this.settingsService_.getLogsAutoRefreshTimeInterval() * 1000;
     this.isLoading = true;
+    this.refreshInterval = this.settingsService_.getLogsAutoRefreshTimeInterval();
 
     const namespace = this.activatedRoute_.snapshot.params.resourceNamespace;
     const resourceType = this.activatedRoute_.snapshot.params.resourceType;
     const resourceName = this.activatedRoute_.snapshot.params.resourceName;
     const containerName = this.activatedRoute_.snapshot.queryParams.container;
 
-    this.sourceSubscription = logService
-      .getResource(`source/${namespace}/${resourceName}/${resourceType}`)
-      .subscribe((data: LogSources) => {
-        this.logSources = data;
-        this.pod = data.podNames[0]; // Pick first pod (cannot use resource name as it may
-        // not be a pod).
-        this.container = containerName ? containerName : data.containerNames[0]; // Pick from URL or first.
-        this.appendContainerParam();
+    logService
+      .getResource<LogSources>(`source/${namespace}/${resourceName}/${resourceType}`)
+      .pipe(
+        switchMap<LogSources, Observable<LogDetails>>(data => {
+          this.logSources = data;
+          this.pod = data.podNames[0]; // Pick first pod (cannot use resource name as it may
+          // not be a pod).
+          this.container = containerName ? containerName : data.containerNames[0]; // Pick from URL or first.
+          this.appendContainerParam();
 
-        this.logsSubscription = this.logService
-          .getResource(`${namespace}/${this.pod}/${this.container}`)
-          .subscribe((data: LogDetails) => {
-            this.updateUiModel(data);
-            this.isLoading = false;
-          });
+          return this.logService.getResource(`${namespace}/${this.pod}/${this.container}`);
+        })
+      )
+      .pipe(takeUntil(this.unsubscribe_))
+      .subscribe(data => {
+        this.updateUiModel(data);
+        this.isLoading = false;
       });
   }
 
@@ -108,15 +111,11 @@ export class LogsComponent implements OnDestroy {
       queryParamsHandling: 'merge',
     });
 
-    if (this.intervalSubscription) {
-      this.intervalSubscription.unsubscribe();
-    }
-    if (this.sourceSubscription) {
-      this.sourceSubscription.unsubscribe();
-    }
-    if (this.logsSubscription) {
-      this.logsSubscription.unsubscribe();
-    }
+    this.unsubscribe_.next();
+    this.unsubscribe_.complete();
+
+    this.refreshUnsubscribe_.next();
+    this.refreshUnsubscribe_.complete();
   }
 
   /**
@@ -188,7 +187,7 @@ export class LogsComponent implements OnDestroy {
       this.currentSelection.referencePoint.lineNum,
       this.currentSelection.offsetFrom - logsPerView,
       this.currentSelection.offsetFrom,
-      this.scrollToBottom.bind(this),
+      this.scrollToBottom.bind(this)
     );
   }
 
@@ -202,7 +201,7 @@ export class LogsComponent implements OnDestroy {
       this.currentSelection.referencePoint.lineNum,
       this.currentSelection.offsetTo,
       this.currentSelection.offsetTo + logsPerView,
-      this.scrollToTop.bind(this),
+      this.scrollToTop.bind(this)
     );
   }
 
@@ -220,7 +219,7 @@ export class LogsComponent implements OnDestroy {
     referenceLinenum: number,
     offsetFrom: number,
     offsetTo: number,
-    onLoad?: Function,
+    onLoad?: Function
   ): void {
     const namespace = this.activatedRoute_.snapshot.params.resourceNamespace;
     const params = new HttpParams()
@@ -230,8 +229,9 @@ export class LogsComponent implements OnDestroy {
       .set('offsetFrom', `${offsetFrom}`)
       .set('offsetTo', `${offsetTo}`)
       .set('previous', `${this.logService.getPrevious()}`);
-    this.logsSubscription = this.logService
+    this.logService
       .getResource(`${namespace}/${this.pod}/${this.container}`, params)
+      .pipe(takeUntil(this.unsubscribe_))
       .subscribe((podLogs: LogDetails) => {
         this.updateUiModel(podLogs);
         if (onLoad) {
@@ -281,12 +281,21 @@ export class LogsComponent implements OnDestroy {
    * Starts and stops interval function used to automatically refresh logs.
    */
   toggleIntervalFunction(): void {
-    if (this.intervalSubscription && !this.intervalSubscription.closed) {
-      this.intervalSubscription.unsubscribe();
-    } else {
-      const intervalObservable = Observable.interval(this.refreshInterval);
-      this.intervalSubscription = intervalObservable.subscribe(() => this.loadNewest());
+    this.logsAutorefreshEnabled = !this.logsAutorefreshEnabled;
+    if (!this.logsAutorefreshEnabled) {
+      this.refreshUnsubscribe_.next();
+      return;
     }
+
+    this.settingsService_.onSettingsUpdate
+      .pipe(
+        switchMap(_ => {
+          const interval = this.settingsService_.getLogsAutoRefreshTimeInterval() * 1000;
+          return timer(0, interval === 0 ? undefined : interval);
+        })
+      )
+      .pipe(takeUntil(this.refreshUnsubscribe_))
+      .subscribe(_ => this.loadNewest());
   }
 
   downloadLog(): void {

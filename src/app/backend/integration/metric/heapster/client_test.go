@@ -15,6 +15,7 @@
 package heapster
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -38,8 +39,14 @@ import (
 )
 
 func areErrorsEqual(err1, err2 error) bool {
-	return (err1 != nil && err2 != nil && err1.Error() == err2.Error()) ||
+	return (err1 != nil && err2 != nil && normalize(err1.Error()) == normalize(err2.Error())) ||
 		(err1 == nil && err2 == nil)
+}
+
+// Removes all quote signs that might have been added to the message.
+// Might depend on dependencies version how they are constructed.
+func normalize(msg string) string {
+	return strings.Replace(msg, "\"", "", -1)
 }
 
 type GlobalCounter int32
@@ -90,7 +97,7 @@ func (self FakeHeapster) ID() integrationapi.IntegrationID {
 	return "fakeHeapster"
 }
 
-func (self FakeRequest) DoRaw() ([]byte, error) {
+func (self FakeRequest) DoRaw(ctx context.Context) ([]byte, error) {
 	_NumRequests.increment()
 	log.Println("Performing req...")
 	path := self.Path

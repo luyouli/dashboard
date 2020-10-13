@@ -27,7 +27,8 @@ limitations under the License.
     <div kdLoadingSpinner
          [isLoading]="isLoading"></div>
 
-    <mat-table [dataSource]="getData()">
+    <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource">
       <ng-container [matColumnDef]="getDisplayColumns()[0]">
         <mat-header-cell *matHeaderCellDef></mat-header-cell>
         <mat-cell *matCellDef="let event">
@@ -70,7 +71,8 @@ limitations under the License.
         <mat-header-cell *matHeaderCellDef
                          i18n>First Seen</mat-header-cell>
         <mat-cell *matCellDef="let event">
-          <kd-date [date]="event.firstSeen"></kd-date>
+          <kd-date [date]="event.firstSeen"
+                   [relative]="true"></kd-date>
         </mat-cell>
       </ng-container>
 
@@ -78,7 +80,8 @@ limitations under the License.
         <mat-header-cell *matHeaderCellDef
                          i18n>Last Seen</mat-header-cell>
         <mat-cell *matCellDef="let event">
-          <kd-date [date]="event.lastSeen"></kd-date>
+          <kd-date [date]="event.lastSeen"
+                   [relative]="true"></kd-date>
         </mat-cell>
       </ng-container>
 

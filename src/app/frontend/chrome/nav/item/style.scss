@@ -24,13 +24,23 @@
   font-weight: $regular-font-weight;
   height: 5.5 * $baseline-grid;
   line-height: 5.5 * $baseline-grid;
-  margin: 0;
+  margin: 1px 0;
   max-height: 5.5 * $baseline-grid;
   padding: 0 (2 * $baseline-grid) 0 (1.5 * $baseline-grid);
   text-align: left;
   text-transform: none;
   white-space: nowrap;
   width: 100%;
+
+  .kd-namespaced-item {
+    display: inline-block;
+    font-size: $footer-font-size-base;
+    height: 2 * $baseline-grid;
+    line-height: 2.25 * $baseline-grid;
+    margin-left: .5 * $baseline-grid;
+    text-align: center;
+    vertical-align: text-top;
+  }
 }
 
 :host-context(.kd-nav-item) {

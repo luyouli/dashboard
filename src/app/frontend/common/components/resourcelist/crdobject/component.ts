@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {HttpParams} from '@angular/common/http';
-import {Observable} from 'rxjs';
-import {CRDObject, CRDObjectList} from '@api/backendapi';
-import {ResourceListBase} from '../../../resources/list';
-import {NamespacedResourceService} from '../../../services/resource/resource';
-import {NotificationsService} from '../../../services/global/notifications';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
-import {ListGroupIdentifier, ListIdentifier} from '../groupids';
+import {CRDObject, CRDObjectList} from '@api/backendapi';
+import {Observable} from 'rxjs';
+import {map, takeUntil} from 'rxjs/operators';
+import {ResourceListBase} from '../../../resources/list';
+import {NotificationsService} from '../../../services/global/notifications';
+import {EndpointManager, Resource} from '../../../services/resource/endpoint';
+import {NamespacedResourceService} from '../../../services/resource/resource';
 import {MenuComponent} from '../../list/column/menu/component';
+import {ListGroupIdentifier, ListIdentifier} from '../groupids';
 
 @Component({
   selector: 'kd-crd-object-list',
@@ -30,24 +32,24 @@ import {MenuComponent} from '../../list/column/menu/component';
 })
 export class CRDObjectListComponent extends ResourceListBase<CRDObjectList, CRDObject> {
   @Input() endpoint: string;
-  @Input() crdName: string;
+  @Input() namespaced = false;
 
   constructor(
     private readonly crdObject_: NamespacedResourceService<CRDObjectList>,
-    notifications: NotificationsService,
     private readonly activatedRoute_: ActivatedRoute,
-    cdr: ChangeDetectorRef,
+    notifications: NotificationsService,
+    cdr: ChangeDetectorRef
   ) {
-    super(
-      `customresourcedefinition/${activatedRoute_.snapshot.params.crdName}`,
-      notifications,
-      cdr,
-    );
+    super(activatedRoute_.params.pipe(map(params => `customresourcedefinition/${params.crdName}`)), notifications, cdr);
     this.id = ListIdentifier.crdObject;
     this.groupId = ListGroupIdentifier.none;
 
     // Register action columns.
     this.registerActionColumn<MenuComponent>('menu', MenuComponent);
+
+    this.activatedRoute_.params.pipe(takeUntil(this.unsubscribe_)).subscribe(params => {
+      this.endpoint = EndpointManager.resource(Resource.crd, true).child(params.crdName, Resource.crdObject);
+    });
   }
 
   getResourceObservable(params?: HttpParams): Observable<CRDObjectList> {
@@ -59,6 +61,10 @@ export class CRDObjectListComponent extends ResourceListBase<CRDObjectList, CRDO
   }
 
   getDisplayColumns(): string[] {
-    return ['name', 'namespace', 'age'];
+    return ['name', 'namespace', 'created'];
+  }
+
+  areMultipleNamespacesSelected(): boolean {
+    return this.namespaceService_.areMultipleNamespacesSelected();
   }
 }

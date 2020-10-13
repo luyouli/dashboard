@@ -14,7 +14,7 @@
 
 import {HttpParams} from '@angular/common/http';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {PersistentVolumeClaim, PersistentVolumeClaimList} from 'typings/backendapi';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
@@ -38,7 +38,7 @@ export class PersistentVolumeClaimListComponent extends ResourceListWithStatuses
   constructor(
     private readonly persistentVolumeClaim_: NamespacedResourceService<PersistentVolumeClaimList>,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
     super('persistentvolumeclaim', notifications, cdr);
     this.id = ListIdentifier.persistentVolumeClaim;
@@ -77,17 +77,7 @@ export class PersistentVolumeClaimListComponent extends ResourceListWithStatuses
   }
 
   getDisplayColumns(): string[] {
-    return [
-      'statusicon',
-      'name',
-      'labels',
-      'status',
-      'volume',
-      'capacity',
-      'accmodes',
-      'storagecl',
-      'age',
-    ];
+    return ['statusicon', 'name', 'labels', 'status', 'volume', 'capacity', 'accmodes', 'storagecl', 'created'];
   }
 
   getVolumeHref(persistentVolumeName: string): string {

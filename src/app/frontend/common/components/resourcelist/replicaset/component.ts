@@ -13,16 +13,10 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
-import {ActivatedRoute, Router} from '@angular/router';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
+import {ActivatedRoute} from '@angular/router';
 import {Event, Metric, ReplicaSet, ReplicaSetList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -46,10 +40,9 @@ export class ReplicaSetListComponent extends ResourceListWithStatuses<ReplicaSet
     private readonly replicaSet_: NamespacedResourceService<ReplicaSetList>,
     private readonly activatedRoute_: ActivatedRoute,
     notifications: NotificationsService,
-    resolver: ComponentFactoryResolver,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('replicaset', notifications, cdr, resolver);
+    super('replicaset', notifications, cdr);
     this.id = ListIdentifier.replicaSet;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -79,15 +72,22 @@ export class ReplicaSetListComponent extends ResourceListWithStatuses<ReplicaSet
   }
 
   isInPendingState(resource: ReplicaSet): boolean {
-    return resource.podInfo.warnings.length === 0 && resource.podInfo.pending > 0;
+    return (
+      resource.podInfo.warnings.length === 0 &&
+      (resource.podInfo.pending > 0 || resource.podInfo.running !== resource.podInfo.desired)
+    );
   }
 
   isInSuccessState(resource: ReplicaSet): boolean {
-    return resource.podInfo.warnings.length === 0 && resource.podInfo.pending === 0;
+    return (
+      resource.podInfo.warnings.length === 0 &&
+      resource.podInfo.pending === 0 &&
+      resource.podInfo.running === resource.podInfo.desired
+    );
   }
 
   protected getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'pods', 'age', 'images'];
+    return ['statusicon', 'name', 'labels', 'pods', 'created', 'images'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

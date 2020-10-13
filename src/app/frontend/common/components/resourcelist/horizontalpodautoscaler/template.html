@@ -32,8 +32,9 @@ limitations under the License.
          [isLoading]="isLoading"></div>
 
     <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource"
                matSort
-               matSortActive="age"
+               matSortActive="created"
                matSortDisableClear
                matSortDirection="asc">
 
@@ -73,11 +74,11 @@ limitations under the License.
         </mat-cell>
       </ng-container>
 
-      <ng-container matColumnDef="age">
+      <ng-container matColumnDef="created">
         <mat-header-cell *matHeaderCellDef
                          mat-sort-header
                          disableClear="true"
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let horizontalpodautoscaler">
           <kd-date [date]="horizontalpodautoscaler.objectMeta.creationTimestamp"
                    relative></kd-date>
@@ -94,11 +95,10 @@ limitations under the License.
       </ng-container>
 
       <mat-header-row *matHeaderRowDef="getColumns()"></mat-header-row>
-      <mat-row #matrow
-               (mouseover)="onRowOver(index)"
+      <mat-row (mouseover)="onRowOver(index, row)"
                (mouseleave)="onRowLeave()"
                (click)="expand(index, row)"
-               [ngClass]="{'kd-no-bottom-border': isRowExpanded(index), 'kd-clickable': hasErrors(row)}"
+               [ngClass]="{'kd-no-bottom-border': isRowExpanded(index, row), 'kd-clickable': hasErrors(row)}"
                *matRowDef="let row; columns: getColumns(); let index=index"></mat-row>
     </mat-table>
 

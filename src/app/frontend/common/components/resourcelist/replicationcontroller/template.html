@@ -18,7 +18,7 @@ limitations under the License.
          [hidden]="isHidden()">
   <div title
        fxLayout="row"
-       i18n>Replications Controllers</div>
+       i18n>Replication Controllers</div>
   <div description><span class="kd-muted-light"
           i18n>Items:&nbsp;</span>{{totalItems}}</div>
   <div actions>
@@ -31,10 +31,12 @@ limitations under the License.
          [isLoading]="isLoading"></div>
 
     <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource"
                matSort
-               matSortActive="age"
+               matSortActive="created"
                matSortDisableClear
-               matSortDirection="asc">
+               matSortDirection="asc"
+               multiTemplateDataRows>
       <ng-container matColumnDef="statusicon">
         <mat-header-cell *matHeaderCellDef></mat-header-cell>
         <mat-cell *matCellDef="let rc; let index=index">
@@ -47,6 +49,12 @@ limitations under the License.
               {{getStatus(rc).iconName}}
             </ng-template>
           </mat-icon>
+        </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="statusDetail">
+        <mat-cell *matCellDef="let rc">
+          <kd-row-detail [events]="getEvents(rc)"></kd-row-detail>
         </mat-cell>
       </ng-container>
 
@@ -87,11 +95,11 @@ limitations under the License.
         </mat-cell>
       </ng-container>
 
-      <ng-container matColumnDef="age">
+      <ng-container matColumnDef="created">
         <mat-header-cell *matHeaderCellDef
                          mat-sort-header
                          disableClear="true"
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let rc">
           <kd-date [date]="rc.objectMeta.creationTimestamp"
                    relative></kd-date>
@@ -116,12 +124,14 @@ limitations under the License.
       </ng-container>
 
       <mat-header-row *matHeaderRowDef="getColumns()"></mat-header-row>
-      <mat-row #matrow
-               (mouseover)="onRowOver(index)"
+      <mat-row (mouseover)="onRowOver(index, row)"
                (mouseleave)="onRowLeave()"
                (click)="expand(index, row)"
-               [ngClass]="{'kd-no-bottom-border': isRowExpanded(index), 'kd-clickable': hasErrors(row)}"
+               [ngClass]="{'kd-no-bottom-border': isRowExpanded(index, row), 'kd-clickable': hasErrors(row)}"
                *matRowDef="let row; columns: getColumns(); let index=index"></mat-row>
+      <mat-row class="kd-detail-row"
+               [ngClass]="{'kd-hidden': !isRowExpanded(index, row)}"
+               *matRowDef="let row; columns: ['statusDetail']; let index=index"></mat-row>
     </mat-table>
 
     <mat-paginator [length]="totalItems"

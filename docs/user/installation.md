@@ -1,8 +1,4 @@
-# Installation
-
 ## Official release
-
-**IMPORTANT:** Before upgrading from older version of Dashboard to 1.7+ make sure to delete Cluster Role Binding for `kubernetes-dashboard` Service Account, otherwise Dashboard will have full admin access to the cluster.
 
 ### Quick setup
 
@@ -23,7 +19,7 @@ kubectl create secret generic kubernetes-dashboard-certs --from-file=$HOME/certs
 For Dashboard to pickup the certificates, you must pass arguments `--tls-cert-file=/tls.crt` and `--tls-key-file=/tls.key` to the container. You can edit YAML definition and deploy Dashboard in one go:
 
 ```
-kubectl create --edit -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc6/aio/deploy/recommended.yaml
+kubectl create --edit -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.4/aio/deploy/recommended.yaml
 ```
 
 Under Deployment section, add arguments to pod definition, it should look as follows:
@@ -42,7 +38,7 @@ This setup is not fully secure. Certificates are not used and Dashboard is expos
 To deploy Dashboard execute following command:
 
 ```
-kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc6/aio/deploy/alternative.yaml
+kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.1/aio/deploy/alternative.yaml
 ```
 
 
@@ -55,7 +51,7 @@ Besides official releases, there are also development releases, that are pushed 
 In most of the use cases you need to execute the following command to deploy latest development release:
 
 ```
-$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc6/aio/deploy/head.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.1/aio/deploy/head.yaml
 ```
 
 ### Update

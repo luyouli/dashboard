@@ -23,20 +23,21 @@
 }
 
 .kd-toolbar {
-  height: 6 * $baseline-grid;
+  height: $primary-toolbar-height;
   min-height: 6 * $baseline-grid;
   padding-left: 1.75 * $baseline-grid;
 }
 
 .kd-toolbar-tools {
   align-items: center;
-  height: 6 * $baseline-grid;
+  height: $secondary-toolbar-height;
   margin: auto;
   padding-left: $baseline-grid;
 }
 
 .kd-logo-bar {
   height: 4 * $baseline-grid;
+  width: $nav-width;
 }
 
 .kd-toolbar-logo-link {
@@ -59,7 +60,7 @@
   padding-left: .5 * $baseline-grid;
   // Move entire second toolbar above content to avoid elements overlap with
   // shadow (there was problem with it on IE).
-  z-index: 1;
+  z-index: 100;
 }
 
 .kd-system-banner {
@@ -74,7 +75,7 @@
   white-space: nowrap;
   // Move entire system banner above content to avoid elements overlap with
   // shadow (there was problem with it on IE).
-  z-index: 2;
+  z-index: 200;
 }
 
 .kd-chrome-container {
@@ -86,16 +87,4 @@
 
 .kd-scroll-container {
   overflow-x: auto;
-
-  ::before {
-    content: '';
-    display: block;
-    margin-bottom: 2.5 * $baseline-grid;
-  }
-
-  ::after {
-    content: '';
-    display: block;
-    padding-bottom: 2 * $baseline-grid;
-  }
 }

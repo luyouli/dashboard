@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {Event, ReplicationController, ReplicationControllerList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -44,10 +38,9 @@ export class ReplicationControllerListComponent extends ResourceListWithStatuses
   constructor(
     private readonly replicationController_: NamespacedResourceService<ReplicationControllerList>,
     notifications: NotificationsService,
-    resolver: ComponentFactoryResolver,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('replicationcontroller', notifications, cdr, resolver);
+    super('replicationcontroller', notifications, cdr);
     this.id = ListIdentifier.replicationController;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -84,7 +77,7 @@ export class ReplicationControllerListComponent extends ResourceListWithStatuses
   }
 
   protected getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'pods', 'age', 'images'];
+    return ['statusicon', 'name', 'labels', 'pods', 'created', 'images'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

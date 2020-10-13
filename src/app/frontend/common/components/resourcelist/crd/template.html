@@ -31,8 +31,9 @@ limitations under the License.
          [isLoading]="isLoading"></div>
 
     <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource"
                matSort
-               matSortActive="age"
+               matSortActive="created"
                matSortDisableClear
                matSortDirection="asc">
       <ng-container [matColumnDef]="getColumns()[0]">
@@ -51,7 +52,7 @@ limitations under the License.
                          i18n>Name</mat-header-cell>
         <mat-cell *matCellDef="let crd">
           <a [routerLink]="getDetailsHref(crd.objectMeta.name)"
-             queryParamsHandling="preserve">{{crd.names.kind}}</a>
+             queryParamsHandling="preserve">{{getDisplayName(crd.names.kind)}}</a>
         </mat-cell>
       </ng-container>
 
@@ -77,7 +78,7 @@ limitations under the License.
         <mat-header-cell *matHeaderCellDef
                          mat-sort-header
                          disableClear="true"
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let crd">
           <kd-date [date]="crd.objectMeta.creationTimestamp"
                    relative></kd-date>

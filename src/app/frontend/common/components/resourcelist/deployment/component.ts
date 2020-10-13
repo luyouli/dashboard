@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {Deployment, DeploymentList, Event, Metric} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
 import {EndpointManager, Resource} from '../../../services/resource/endpoint';
@@ -42,10 +36,9 @@ export class DeploymentListComponent extends ResourceListWithStatuses<Deployment
   constructor(
     private readonly deployment_: NamespacedResourceService<DeploymentList>,
     notifications: NotificationsService,
-    resolver: ComponentFactoryResolver,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('deployment', notifications, cdr, resolver);
+    super('deployment', notifications, cdr);
     this.id = ListIdentifier.deployment;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -75,15 +68,22 @@ export class DeploymentListComponent extends ResourceListWithStatuses<Deployment
   }
 
   isInPendingState(resource: Deployment): boolean {
-    return resource.pods.warnings.length === 0 && resource.pods.pending > 0;
+    return (
+      resource.pods.warnings.length === 0 &&
+      (resource.pods.pending > 0 || resource.pods.running !== resource.pods.desired)
+    );
   }
 
   isInSuccessState(resource: Deployment): boolean {
-    return resource.pods.warnings.length === 0 && resource.pods.pending === 0;
+    return (
+      resource.pods.warnings.length === 0 &&
+      resource.pods.pending === 0 &&
+      resource.pods.running === resource.pods.desired
+    );
   }
 
   getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'pods', 'age', 'images'];
+    return ['statusicon', 'name', 'labels', 'pods', 'created', 'images'];
   }
 
   hasErrors(deployment: Deployment): boolean {

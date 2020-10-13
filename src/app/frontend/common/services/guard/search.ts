@@ -13,14 +13,7 @@
 // limitations under the License.
 
 import {Injectable} from '@angular/core';
-import {
-  ActivatedRouteSnapshot,
-  CanDeactivate,
-  Params,
-  Router,
-  RouterStateSnapshot,
-  UrlTree,
-} from '@angular/router';
+import {ActivatedRouteSnapshot, CanDeactivate, Params, Router, RouterStateSnapshot, UrlTree} from '@angular/router';
 import {SearchComponent} from '../../../search/component';
 import {SEARCH_QUERY_STATE_PARAM} from '../../params/params';
 
@@ -35,7 +28,7 @@ export class SearchGuard implements CanDeactivate<SearchComponent> {
     _cmp: SearchComponent,
     _route: ActivatedRouteSnapshot,
     _routeSnapshot: RouterStateSnapshot,
-    nextState?: RouterStateSnapshot,
+    nextState?: RouterStateSnapshot
   ): boolean | UrlTree {
     let url = nextState.url;
     const queryParams = this.getQueryParams_(url);

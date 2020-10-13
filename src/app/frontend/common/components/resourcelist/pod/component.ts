@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {Event, Metric, Pod, PodList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -42,11 +36,10 @@ export class PodListComponent extends ResourceListWithStatuses<PodList, Pod> {
 
   constructor(
     private readonly podList: NamespacedResourceService<PodList>,
-    resolver: ComponentFactoryResolver,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('pod', notifications, cdr, resolver);
+    super('pod', notifications, cdr);
     this.id = ListIdentifier.pod;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -84,7 +77,7 @@ export class PodListComponent extends ResourceListWithStatuses<PodList, Pod> {
   }
 
   protected getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'node', 'status', 'restarts', 'cpu', 'mem', 'age'];
+    return ['statusicon', 'name', 'labels', 'node', 'status', 'restarts', 'cpu', 'mem', 'created'];
   }
 
   private shouldShowNamespaceColumn_(): boolean {

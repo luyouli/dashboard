@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {Event, Job, JobList, Metric} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
@@ -44,10 +38,9 @@ export class JobListComponent extends ResourceListWithStatuses<JobList, Job> {
   constructor(
     private readonly job_: NamespacedResourceService<JobList>,
     notifications: NotificationsService,
-    resolver: ComponentFactoryResolver,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('job', notifications, cdr, resolver);
+    super('job', notifications, cdr);
     this.id = ListIdentifier.job;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -85,7 +78,7 @@ export class JobListComponent extends ResourceListWithStatuses<JobList, Job> {
   }
 
   getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'pods', 'age', 'images'];
+    return ['statusicon', 'name', 'labels', 'pods', 'created', 'images'];
   }
 
   hasErrors(job: Job): boolean {

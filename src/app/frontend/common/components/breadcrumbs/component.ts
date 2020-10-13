@@ -15,7 +15,10 @@
 import {Component, OnInit} from '@angular/core';
 import {ActivatedRoute, NavigationEnd, Params, Route, Router} from '@angular/router';
 import {Breadcrumb} from '@api/frontendapi';
+import {distinctUntilChanged, filter} from 'rxjs/operators';
 import {POD_DETAIL_ROUTE} from '../../../resource/workloads/pod/routing';
+import {REPLICASET_DETAIL_ROUTE} from '../../../resource/workloads/replicaset/routing';
+import {REPLICATIONCONTROLLER_DETAIL_ROUTE} from '../../../resource/workloads/replicationcontroller/routing';
 import {SEARCH_QUERY_STATE_PARAM} from '../../params/params';
 
 export const LOGS_PARENT_PLACEHOLDER = '___LOGS_PARENT_PLACEHOLDER___';
@@ -39,8 +42,10 @@ export class BreadcrumbsComponent implements OnInit {
 
   private _registerNavigationHook(): void {
     this._router.events
-      .filter(event => event instanceof NavigationEnd)
-      .distinctUntilChanged()
+      .pipe(
+        filter(event => event instanceof NavigationEnd),
+        distinctUntilChanged()
+      )
       .subscribe(() => {
         this._initBreadcrumbs();
       });
@@ -50,9 +55,10 @@ export class BreadcrumbsComponent implements OnInit {
     const currentRoute = this._getCurrentRoute();
     const url = this._router.url.includes('?') ? this._router.url.split('?')[0] : '';
     let urlArray = url.split('/');
-    let routeParamsCount = currentRoute.routeConfig.data.routeParamsCount
-      ? +currentRoute.routeConfig.data.routeParamsCount
-      : currentRoute.routeConfig.path.split('/').length;
+    let routeParamsCount =
+      currentRoute.routeConfig.data && currentRoute.routeConfig.data.routeParamsCount
+        ? +currentRoute.routeConfig.data.routeParamsCount
+        : currentRoute.routeConfig.path.split('/').length;
 
     this.breadcrumbs = [
       {
@@ -73,12 +79,7 @@ export class BreadcrumbsComponent implements OnInit {
     ) {
       if (currentRoute.routeConfig.data.parent === LOGS_PARENT_PLACEHOLDER) {
         route = this._getLogsParent(currentRoute.snapshot.params);
-        urlArray = [
-          '',
-          urlArray[urlArray.length - 1],
-          urlArray[urlArray.length - 3],
-          urlArray[urlArray.length - 2],
-        ];
+        urlArray = ['', urlArray[urlArray.length - 1], urlArray[urlArray.length - 3], urlArray[urlArray.length - 2]];
         routeParamsCount = 0;
       } else if (currentRoute.routeConfig.data.parent === EXEC_PARENT_PLACEHOLDER) {
         route = POD_DETAIL_ROUTE;
@@ -115,9 +116,12 @@ export class BreadcrumbsComponent implements OnInit {
     const resourceType = params['resourceType'];
     if (resourceType === 'pod') {
       return POD_DETAIL_ROUTE;
-    } else {
-      return undefined;
+    } else if (resourceType === 'replicationcontroller') {
+      return REPLICATIONCONTROLLER_DETAIL_ROUTE;
+    } else if (resourceType === 'replicaset') {
+      return REPLICASET_DETAIL_ROUTE;
     }
+    return undefined;
   }
 
   private _getCurrentRoute(): ActivatedRoute {
@@ -140,8 +144,7 @@ export class BreadcrumbsComponent implements OnInit {
       return breadcrumb;
     } else if (route && route.component) {
       return route.component.name;
-    } else {
-      return 'Unknown';
     }
+    return 'Unknown';
   }
 }

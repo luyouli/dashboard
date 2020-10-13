@@ -16,11 +16,10 @@ import {Component, Input} from '@angular/core';
 import {Router} from '@angular/router';
 import {ObjectMeta, TypeMeta} from '@api/backendapi';
 import {ActionColumn} from '@api/frontendapi';
-import {first} from 'rxjs/operators';
+import {PinnerService} from '../../../../services/global/pinner';
 import {KdStateService} from '../../../../services/global/state';
 import {VerberService} from '../../../../services/global/verber';
 import {Resource} from '../../../../services/resource/endpoint';
-import {PinnerService} from '../../../../services/global/pinner';
 
 const loggableResources: string[] = [
   Resource.daemonSet,
@@ -44,12 +43,14 @@ const triggerableResources: string[] = [Resource.cronJob];
 export class MenuComponent implements ActionColumn {
   @Input() objectMeta: ObjectMeta;
   @Input() typeMeta: TypeMeta;
+  @Input() displayName: string;
+  @Input() namespaced: boolean;
 
   constructor(
     private readonly verber_: VerberService,
     private readonly router_: Router,
     private readonly kdState_: KdStateService,
-    private readonly pinner_: PinnerService,
+    private readonly pinner_: PinnerService
   ) {}
 
   setObjectMeta(objectMeta: ObjectMeta): void {
@@ -60,17 +61,20 @@ export class MenuComponent implements ActionColumn {
     this.typeMeta = typeMeta;
   }
 
+  setDisplayName(displayName: string): void {
+    this.displayName = displayName;
+  }
+
+  setNamespaced(namespaced: boolean): void {
+    this.namespaced = namespaced;
+  }
+
   isLogsEnabled(): boolean {
     return loggableResources.includes(this.typeMeta.kind);
   }
 
   getLogsHref(): string {
-    return this.kdState_.href(
-      'log',
-      this.objectMeta.name,
-      this.objectMeta.namespace,
-      this.typeMeta.kind,
-    );
+    return this.kdState_.href('log', this.objectMeta.name, this.objectMeta.namespace, this.typeMeta.kind);
   }
 
   isExecEnabled(): boolean {
@@ -102,7 +106,13 @@ export class MenuComponent implements ActionColumn {
   }
 
   onPin(): void {
-    this.pinner_.pin(this.typeMeta.kind, this.objectMeta.name, this.objectMeta.namespace);
+    this.pinner_.pin(
+      this.typeMeta.kind,
+      this.objectMeta.name,
+      this.objectMeta.namespace,
+      this.displayName ? this.displayName : this.objectMeta.name,
+      this.namespaced
+    );
   }
 
   onUnpin(): void {
@@ -110,11 +120,7 @@ export class MenuComponent implements ActionColumn {
   }
 
   isPinned(): boolean {
-    return this.pinner_.isPinned(
-      this.typeMeta.kind,
-      this.objectMeta.name,
-      this.objectMeta.namespace,
-    );
+    return this.pinner_.isPinned(this.typeMeta.kind, this.objectMeta.name, this.objectMeta.namespace);
   }
 
   onEdit(): void {

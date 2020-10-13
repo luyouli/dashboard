@@ -12,30 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {Component, OnInit} from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {NgForm} from '@angular/forms';
 import {MatDialog} from '@angular/material/dialog';
 import {GlobalSettings} from '@api/backendapi';
+import {of, Subject} from 'rxjs';
+import {catchError, takeUntil, tap} from 'rxjs/operators';
 import {GlobalSettingsService} from '../../common/services/global/globalsettings';
 import {TitleService} from '../../common/services/global/title';
 
 import {SaveAnywayDialog} from './saveanywaysdialog/dialog';
 
-@Component({selector: 'kd-global-settings', templateUrl: './template.html'})
-export class GlobalSettingsComponent implements OnInit {
+@Component({
+  selector: 'kd-global-settings',
+  templateUrl: './template.html',
+  styleUrls: ['style.scss'],
+})
+export class GlobalSettingsComponent implements OnInit, OnDestroy {
   // Keep it in sync with ConcurrentSettingsChangeError constant from the backend.
   private readonly concurrentChangeErr_ = 'settings changed since last reload';
+  private readonly unsubscribe_ = new Subject<void>();
+
   settings: GlobalSettings = {} as GlobalSettings;
   hasLoadError = false;
 
   constructor(
     private readonly settings_: GlobalSettingsService,
     private readonly dialog_: MatDialog,
-    private readonly title_: TitleService,
+    private readonly title_: TitleService
   ) {}
 
   ngOnInit(): void {
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe_.next();
+    this.unsubscribe_.complete();
   }
 
   isInitialized(): boolean {
@@ -47,14 +60,20 @@ export class GlobalSettingsComponent implements OnInit {
       form.resetForm();
     }
 
+    this.settings_
+      .canI()
+      .pipe(takeUntil(this.unsubscribe_))
+      .subscribe(canI => (this.hasLoadError = !canI));
     this.settings_.load(this.onLoad.bind(this), this.onLoadError.bind(this));
   }
 
   onLoad(): void {
     this.settings.itemsPerPage = this.settings_.getItemsPerPage();
+    this.settings.labelsLimit = this.settings_.getLabelsLimit();
     this.settings.clusterName = this.settings_.getClusterName();
     this.settings.logsAutoRefreshTimeInterval = this.settings_.getLogsAutoRefreshTimeInterval();
     this.settings.resourceAutoRefreshTimeInterval = this.settings_.getResourceAutoRefreshTimeInterval();
+    this.settings.disableAccessDeniedNotifications = this.settings_.getDisableAccessDeniedNotifications();
   }
 
   onLoadError(): void {
@@ -62,29 +81,33 @@ export class GlobalSettingsComponent implements OnInit {
   }
 
   save(form: NgForm): void {
-    this.settings_.save(this.settings).subscribe(
-      () => {
-        this.load(form);
-        this.title_.update();
-        this.settings_.onSettingsUpdate.next();
-      },
-      err => {
-        if (err && err.data.indexOf(this.concurrentChangeErr_) !== -1) {
-          this.dialog_
-            .open(SaveAnywayDialog, {width: '420px'})
-            .afterClosed()
-            .subscribe(result => {
-              if (result === true) {
-                // Backend was refreshed with the PUT request, so the second try will be
-                // successful unless yet another concurrent change will happen. In that case
-                // "save anyways" dialog will be shown again.
-                this.save(form);
-              } else {
-                this.load(form);
-              }
-            });
+    this.settings_
+      .save(this.settings)
+      .pipe(
+        tap(_ => {
+          this.load(form);
+          this.title_.update();
+          this.settings_.onSettingsUpdate.next();
+        })
+      )
+      .pipe(
+        catchError(err => {
+          if (err && err.data.indexOf(this.concurrentChangeErr_) !== -1) {
+            return this.dialog_.open(SaveAnywayDialog, {width: '420px'}).afterClosed();
+          }
+
+          return of(false);
+        })
+      )
+      .subscribe(result => {
+        if (result === true) {
+          // Backend was refreshed with the PUT request, so the second try will be
+          // successful unless yet another concurrent change will happen. In that case
+          // "save anyways" dialog will be shown again.
+          this.save(form);
+        } else {
+          this.load(form);
         }
-      },
-    );
+      });
   }
 }

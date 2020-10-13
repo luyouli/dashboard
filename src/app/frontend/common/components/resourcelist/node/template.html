@@ -34,6 +34,7 @@ limitations under the License.
          [isLoading]="isLoading"></div>
 
     <mat-table [dataSource]="getData()"
+               [trackBy]="trackByResource"
                matSort
                [matSortActive]="getColumns()[8]"
                matSortDisableClear
@@ -110,7 +111,7 @@ limitations under the License.
         <mat-header-cell *matHeaderCellDef
                          mat-sort-header
                          disableClear="true"
-                         i18n>Age</mat-header-cell>
+                         i18n>Created</mat-header-cell>
         <mat-cell *matCellDef="let node">
           <kd-date [date]="node.objectMeta.creationTimestamp"
                    relative></kd-date>

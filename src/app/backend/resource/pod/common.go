@@ -46,7 +46,7 @@ func getPodStatus(pod v1.Pod, warnings []common.Event) PodStatus {
 	}
 }
 
-// getPodStatusPhase returns one of four pod status phases (Pending, Running, Succeeded, Failed)
+// getPodStatusPhase returns one of four pod status phases (Pending, Running, Succeeded, Failed, Unknown, Terminating)
 func getPodStatusPhase(pod v1.Pod, warnings []common.Event) v1.PodPhase {
 	// For terminated pods that failed
 	if pod.Status.Phase == v1.PodFailed {
@@ -79,6 +79,12 @@ func getPodStatusPhase(pod v1.Pod, warnings []common.Event) v1.PodPhase {
 		return v1.PodFailed
 	}
 
+	if pod.DeletionTimestamp != nil && pod.Status.Reason == "NodeLost" {
+		return v1.PodUnknown
+	} else if pod.DeletionTimestamp != nil {
+		return "Terminating"
+	}
+
 	// pending
 	return v1.PodPending
 }
@@ -95,8 +101,6 @@ func (self PodCell) GetProperty(name dataselect.PropertyName) dataselect.Compara
 		return dataselect.StdComparableTime(self.ObjectMeta.CreationTimestamp.Time)
 	case dataselect.NamespaceProperty:
 		return dataselect.StdComparableString(self.ObjectMeta.Namespace)
-	case dataselect.StatusProperty:
-		return dataselect.StdComparableString(self.Status.Phase)
 	default:
 		// if name is not supported then just return a constant dummy value, sort will have no effect.
 		return nil
@@ -160,6 +164,10 @@ func getStatus(list *v1.PodList, events []v1.Event) common.ResourceStatus {
 			info.Running++
 		case v1.PodPending:
 			info.Pending++
+		case v1.PodUnknown:
+			info.Unknown++
+		case "Terminating":
+			info.Terminating++
 		}
 	}
 

@@ -13,15 +13,9 @@
 // limitations under the License.
 
 import {HttpParams} from '@angular/common/http';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ComponentFactoryResolver,
-  Input,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, Input} from '@angular/core';
 import {Event, Metric, StatefulSet, StatefulSetList} from '@api/backendapi';
-import {Observable} from 'rxjs/Observable';
+import {Observable} from 'rxjs';
 import {ResourceListWithStatuses} from '../../../resources/list';
 import {NotificationsService} from '../../../services/global/notifications';
 import {EndpointManager, Resource} from '../../../services/resource/endpoint';
@@ -34,21 +28,17 @@ import {ListGroupIdentifier, ListIdentifier} from '../groupids';
   templateUrl: './template.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StatefulSetListComponent extends ResourceListWithStatuses<
-  StatefulSetList,
-  StatefulSet
-> {
+export class StatefulSetListComponent extends ResourceListWithStatuses<StatefulSetList, StatefulSet> {
   @Input() endpoint = EndpointManager.resource(Resource.statefulSet, true).list();
   @Input() showMetrics = false;
   cumulativeMetrics: Metric[];
 
   constructor(
     private readonly statefulSet_: NamespacedResourceService<StatefulSetList>,
-    resolver: ComponentFactoryResolver,
     notifications: NotificationsService,
-    cdr: ChangeDetectorRef,
+    cdr: ChangeDetectorRef
   ) {
-    super('statefulset', notifications, cdr, resolver);
+    super('statefulset', notifications, cdr);
     this.id = ListIdentifier.statefulSet;
     this.groupId = ListGroupIdentifier.workloads;
 
@@ -78,15 +68,22 @@ export class StatefulSetListComponent extends ResourceListWithStatuses<
   }
 
   isInPendingState(resource: StatefulSet): boolean {
-    return resource.podInfo.warnings.length === 0 && resource.podInfo.pending > 0;
+    return (
+      resource.podInfo.warnings.length === 0 &&
+      (resource.podInfo.pending > 0 || resource.podInfo.running !== resource.podInfo.desired)
+    );
   }
 
   isInSuccessState(resource: StatefulSet): boolean {
-    return resource.podInfo.warnings.length === 0 && resource.podInfo.pending === 0;
+    return (
+      resource.podInfo.warnings.length === 0 &&
+      resource.podInfo.pending === 0 &&
+      resource.podInfo.running === resource.podInfo.desired
+    );
   }
 
   getDisplayColumns(): string[] {
-    return ['statusicon', 'name', 'labels', 'pods', 'age', 'images'];
+    return ['statusicon', 'name', 'labels', 'pods', 'created', 'images'];
   }
 
   hasErrors(statefulSet: StatefulSet): boolean {

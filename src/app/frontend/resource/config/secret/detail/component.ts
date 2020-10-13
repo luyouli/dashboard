@@ -15,7 +15,9 @@
 import {Component, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {SecretDetail} from '@api/backendapi';
-import {Subscription} from 'rxjs/Subscription';
+import {Subject} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
+import {HiddenPropertyMode} from '../../../../common/components/hiddenproperty/component';
 
 import {ActionbarService, ResourceMeta} from '../../../../common/services/global/actionbar';
 import {NotificationsService} from '../../../../common/services/global/notifications';
@@ -27,24 +29,27 @@ import {NamespacedResourceService} from '../../../../common/services/resource/re
   templateUrl: './template.html',
 })
 export class SecretDetailComponent implements OnInit, OnDestroy {
-  private secretSubscription_: Subscription;
   private readonly endpoint_ = EndpointManager.resource(Resource.secret, true);
+  private readonly unsubscribe_ = new Subject<void>();
+
   secret: SecretDetail;
   isInitialized = false;
+  HiddenPropertyMode = HiddenPropertyMode;
 
   constructor(
     private readonly secret_: NamespacedResourceService<SecretDetail>,
     private readonly actionbar_: ActionbarService,
     private readonly activatedRoute_: ActivatedRoute,
-    private readonly notifications_: NotificationsService,
+    private readonly notifications_: NotificationsService
   ) {}
 
   ngOnInit(): void {
     const resourceName = this.activatedRoute_.snapshot.params.resourceName;
     const resourceNamespace = this.activatedRoute_.snapshot.params.resourceNamespace;
 
-    this.secretSubscription_ = this.secret_
+    this.secret_
       .get(this.endpoint_.detail(), resourceName, resourceNamespace)
+      .pipe(takeUntil(this.unsubscribe_))
       .subscribe((d: SecretDetail) => {
         this.secret = d;
         this.notifications_.pushErrors(d.errors);
@@ -54,7 +59,8 @@ export class SecretDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.secretSubscription_.unsubscribe();
+    this.unsubscribe_.next();
+    this.unsubscribe_.complete();
     this.actionbar_.onDetailsLeave.emit();
   }
 

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import {HttpClientTestingModule, HttpTestingController} from '@angular/common/http/testing';
-import {CUSTOM_ELEMENTS_SCHEMA} from '@angular/core';
-import {async, ComponentFixture, TestBed} from '@angular/core/testing';
+import {CUSTOM_ELEMENTS_SCHEMA, InjectionToken} from '@angular/core';
+import {waitForAsync, ComponentFixture, TestBed} from '@angular/core/testing';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatRadioModule} from '@angular/material/radio';
@@ -23,9 +23,10 @@ import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {ActivatedRoute, Router} from '@angular/router';
 import {RouterTestingModule} from '@angular/router/testing';
 import {EnabledAuthenticationModes, LoginSkippableResponse, LoginSpec} from '@api/backendapi';
+import {Config, CONFIG_DI_TOKEN} from '../index.config';
 import {K8SError, KdError} from 'common/errors/errors';
 import {AuthService} from 'common/services/global/authentication';
-import {from, Observable, of} from 'rxjs';
+import {from, Observable, of, throwError} from 'rxjs';
 import {LoginComponent} from './component';
 import {PluginsConfigService} from '../common/services/global/plugin';
 import {PluginMetadata} from '@api/frontendapi';
@@ -34,11 +35,10 @@ const queries = {
   submitButton: '.kd-login-button[type="submit"]',
   skipButton: '.kd-login-button:not([type="submit"])',
   errorText: '.kd-error-text',
-  usernameId: '#username',
-  passwordId: '#password',
+  token: '#token',
 };
-const username = 'kubedude';
-const password = 'supersecret';
+const loginToken = 'supersecret';
+const MOCK_CONFIG_DI_TOKEN = new InjectionToken<Config>('kd.config');
 
 class MockAuthService {
   login(loginSpec: LoginSpec): Observable<K8SError[]> {
@@ -56,14 +56,18 @@ class MockAuthService {
       },
     ];
 
-    // fake an error if password isn't what we expect.
-    if (loginSpec && loginSpec.password === password) {
+    // fake an error if token isn't what we expect.
+    if (loginSpec && loginSpec.token === loginToken) {
       return of([]);
     }
     return of(errors);
   }
 
   skipLoginPage(): void {}
+
+  isLoginEnabled(): boolean {
+    return true;
+  }
 }
 
 class MockRouter {
@@ -86,48 +90,54 @@ describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let httpTestingController: HttpTestingController;
 
-  beforeEach(async(() => {
-    TestBed.configureTestingModule({
-      declarations: [LoginComponent],
-      imports: [
-        NoopAnimationsModule,
-        HttpClientTestingModule,
-        RouterTestingModule,
-        FormsModule,
-        ReactiveFormsModule,
-        MatRadioModule,
-        MatButtonModule,
-      ],
-      schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  beforeEach(
+    waitForAsync(() => {
+      TestBed.configureTestingModule({
+        declarations: [LoginComponent],
+        imports: [
+          NoopAnimationsModule,
+          HttpClientTestingModule,
+          RouterTestingModule,
+          FormsModule,
+          ReactiveFormsModule,
+          MatRadioModule,
+          MatButtonModule,
+        ],
+        schemas: [CUSTOM_ELEMENTS_SCHEMA],
 
-      // inject mocks
-      providers: [
-        {
-          provide: AuthService,
-          useClass: MockAuthService,
-        },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            paramMap: from([]),
+        // inject mocks
+        providers: [
+          {
+            provide: AuthService,
+            useClass: MockAuthService,
           },
-        },
-        {
-          provide: Router,
-          useClass: MockRouter,
-        },
-        {
-          provide: PluginsConfigService,
-          useClass: MockPluginsConfigService,
-        },
-      ],
-    }).compileComponents();
-  }));
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              paramMap: from([]),
+            },
+          },
+          {
+            provide: Router,
+            useClass: MockRouter,
+          },
+          {
+            provide: PluginsConfigService,
+            useClass: MockPluginsConfigService,
+          },
+          {
+            provide: CONFIG_DI_TOKEN,
+            useValue: MOCK_CONFIG_DI_TOKEN,
+          },
+        ],
+      }).compileComponents();
+    })
+  );
 
   beforeEach(() => {
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
-    httpTestingController = TestBed.get(HttpTestingController);
+    httpTestingController = TestBed.inject(HttpTestingController);
   });
 
   describe('initialization', () => {
@@ -167,8 +177,8 @@ describe('LoginComponent', () => {
 
     it('renders user and password inputs if selectedAuthenticationMode === basic', async () => {
       await setSelectedAuthenticationMode('basic');
-      expect(fixture.debugElement.query(By.css(queries.usernameId))).toBeTruthy();
-      expect(fixture.debugElement.query(By.css(queries.passwordId))).toBeTruthy();
+      expect(fixture.debugElement.query(By.css('#username'))).toBeTruthy();
+      expect(fixture.debugElement.query(By.css('#password'))).toBeTruthy();
     });
 
     it('renders kd-upload-file if selectedAuthenticationMode === kubeconfig', async () => {
@@ -180,31 +190,34 @@ describe('LoginComponent', () => {
   describe('login', () => {
     it('calls AuthService.login with correct spec and redirects to overview', async () => {
       // setups spies in services
-      const loginSpy = spyOn(TestBed.get(AuthService), 'login').and.callThrough();
-      const navigateSpy = spyOn(TestBed.get(Router), 'navigate').and.callThrough();
+      const loginSpy = spyOn(TestBed.inject(AuthService), 'login').and.callThrough();
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.callThrough();
 
-      await setSelectedAuthenticationMode('basic');
+      await setSelectedAuthenticationMode('token');
 
       // set inputs and fire change events to trigger onChange()
-      const usernameInput = fixture.debugElement.query(By.css(queries.usernameId)).nativeElement;
-      const passwordInput = fixture.debugElement.query(By.css(queries.passwordId)).nativeElement;
-      usernameInput.value = username;
-      passwordInput.value = password;
-      usernameInput.dispatchEvent(new Event('change'));
-      passwordInput.dispatchEvent(new Event('change'));
+      const token = fixture.debugElement.query(By.css(queries.token)).nativeElement;
+      token.value = loginToken;
+      token.dispatchEvent(new Event('change'));
 
       submit();
 
-      expect(loginSpy).toHaveBeenCalledWith({username, password});
+      expect(loginSpy).toHaveBeenCalledWith({token: loginToken} as LoginSpec);
       expect(navigateSpy).toHaveBeenCalledWith(['overview']);
     });
 
     it('calls AuthService.login, does not redirect, and renders errors if login fails', async () => {
       // setups spies in services
-      const loginSpy = spyOn(TestBed.get(AuthService), 'login').and.callThrough();
-      const navigateSpy = spyOn(TestBed.get(Router), 'navigate').and.callThrough();
+      const err = {status: 401, error: 'Unauthorized (401): Invalid credentials provided'};
+      const loginSpy = spyOn(TestBed.inject(AuthService), 'login').and.returnValue(throwError(err));
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.callThrough();
 
-      await setSelectedAuthenticationMode('basic');
+      await setSelectedAuthenticationMode('token');
+
+      // set inputs and fire change events to trigger onChange()
+      const token = fixture.debugElement.query(By.css(queries.token)).nativeElement;
+      token.value = loginToken;
+      token.dispatchEvent(new Event('change'));
 
       submit();
 
@@ -220,8 +233,8 @@ describe('LoginComponent', () => {
       fixture.debugElement.query(By.css(queries.skipButton)).nativeElement.click();
 
       // setups spies in services
-      const skipLoginPageSpy = spyOn(TestBed.get(AuthService), 'skipLoginPage').and.callThrough();
-      const navigateSpy = spyOn(TestBed.get(Router), 'navigate').and.callThrough();
+      const skipLoginPageSpy = spyOn(TestBed.inject(AuthService), 'skipLoginPage').and.callThrough();
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.callThrough();
 
       await setSelectedAuthenticationMode('basic');
 

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 import {NgModule} from '@angular/core';
+import {MatTableModule} from '@angular/material/table';
 
 import {SharedModule} from '../../shared.module';
+import {DirectivesModule} from '../directives/module';
 
 import {ActionbarComponent} from './actionbar/component';
 import {ActionbarDetailActionsComponent} from './actionbar/detailactions/component';
@@ -29,9 +31,9 @@ import {DefaultActionbar} from './actionbars/default/component';
 import {LogsDefaultActionbar} from './actionbars/logsdefault/component';
 import {LogsExecDefaultActionbar} from './actionbars/logsexecdefault/component';
 import {LogsScaleDefaultActionbar} from './actionbars/logsscaledefault/component';
+import {PinDefaultActionbar} from './actionbars/pindefault/component';
 import {ScaleDefaultActionbar} from './actionbars/scaledefault/component';
 import {TriggerDefaultActionbar} from './actionbars/triggerdefault/component';
-import {PinDefaultActionbar} from './actionbars/pindefault/component';
 import {BreadcrumbsComponent} from './breadcrumbs/component';
 import {CardComponent} from './card/component';
 import {ChipDialog} from './chips/chipdialog/dialog';
@@ -47,7 +49,6 @@ import {GraphComponent} from './graph/component';
 import {GraphCardComponent} from './graphcard/component';
 import {GraphMetricsComponent} from './graphmetrics/component';
 import {HiddenPropertyComponent} from './hiddenproperty/component';
-import {HorizontalPodAutoscalerListComponent} from './resourcelist/horizontalpodautoscaler/component';
 import {ResourceLimitListComponent} from './limits/component';
 import {ColumnComponent} from './list/column/component';
 import {MenuComponent} from './list/column/menu/component';
@@ -72,6 +73,7 @@ import {CronJobListComponent} from './resourcelist/cronjob/component';
 import {DaemonSetListComponent} from './resourcelist/daemonset/component';
 import {DeploymentListComponent} from './resourcelist/deployment/component';
 import {EventListComponent} from './resourcelist/event/component';
+import {HorizontalPodAutoscalerListComponent} from './resourcelist/horizontalpodautoscaler/component';
 import {IngressListComponent} from './resourcelist/ingress/component';
 import {JobListComponent} from './resourcelist/job/component';
 import {NamespaceListComponent} from './resourcelist/namespace/component';
@@ -92,6 +94,12 @@ import {TextInputComponent} from './textinput/component';
 import {UploadFileComponent} from './uploadfile/component';
 import {WorkloadStatusComponent} from './workloadstatus/component';
 import {ZeroStateComponent} from './zerostate/component';
+import {ServiceAccountListComponent} from './resourcelist/serviceaccount/component';
+import {NetworkPolicyListComponent} from './resourcelist/networkpolicy/component';
+import {RoleListComponent} from './resourcelist/role/component';
+import {RoleBindingListComponent} from './resourcelist/rolebinding/component';
+import {ClusterRoleBindingListComponent} from './resourcelist/clusterrolebinding/component';
+import {SubjectListComponent} from './subject/component';
 
 const components = [
   ActionbarDetailActionsComponent,
@@ -103,14 +111,13 @@ const components = [
   ActionbarDetailPinComponent,
   ActionbarComponent,
   ActionbarDetailTriggerComponent,
-
   BreadcrumbsComponent,
-
   CardComponent,
   CardListFilterComponent,
   ChipsComponent,
   CronJobListComponent,
   ClusterRoleListComponent,
+  ClusterRoleBindingListComponent,
   ConfigMapListComponent,
   PluginListComponent,
   ColumnComponent,
@@ -121,43 +128,32 @@ const components = [
   CRDListComponent,
   CRDObjectListComponent,
   CRDVersionListComponent,
-
   DaemonSetListComponent,
   DateComponent,
   DeploymentListComponent,
   DefaultActionbar,
-
   EndpointListComponent,
   ExternalEndpointComponent,
   EventListComponent,
-
   GraphComponent,
   GraphCardComponent,
   GraphMetricsComponent,
-
   HiddenPropertyComponent,
   HorizontalPodAutoscalerListComponent,
-
   IngressListComponent,
   InternalEndpointComponent,
-
   JobListComponent,
-
   LoadingSpinner,
   ListZeroStateComponent,
   LogsScaleDefaultActionbar,
   LogsExecDefaultActionbar,
   LogsDefaultActionbar,
-
   MenuComponent,
-
   NamespaceListComponent,
   NodeListComponent,
   NamespaceSelectorComponent,
   NamespaceChangeDialog,
-
   ObjectMetaComponent,
-
   PodStatusCardComponent,
   PropertyComponent,
   ProxyComponent,
@@ -166,32 +162,32 @@ const components = [
   PersistentVolumeClaimListComponent,
   PolicyRuleListComponent,
   PinDefaultActionbar,
-
   ResourceQuotaListComponent,
   ResourceLimitListComponent,
   ReplicaSetListComponent,
   ReplicationControllerListComponent,
   RowDetailComponent,
-
   StorageClassListComponent,
   StatefulSetListComponent,
   SecretListComponent,
   ServiceListComponent,
+  ServiceAccountListComponent,
   CpuSparklineComponent,
   MemorySparklineComponent,
   ScaleDefaultActionbar,
-
   TextInputComponent,
   TriggerDefaultActionbar,
-
   UploadFileComponent,
-
   ZeroStateComponent,
   WorkloadStatusComponent,
+  NetworkPolicyListComponent,
+  RoleListComponent,
+  RoleBindingListComponent,
+  SubjectListComponent,
 ];
 
 @NgModule({
-  imports: [SharedModule],
+  imports: [SharedModule, DirectivesModule, MatTableModule, MatTableModule],
   declarations: [...components],
   exports: [...components],
   entryComponents: [ChipDialog, RowDetailComponent, MenuComponent, NamespaceChangeDialog],

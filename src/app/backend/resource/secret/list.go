@@ -15,6 +15,7 @@
 package secret
 
 import (
+	"context"
 	"log"
 
 	"github.com/kubernetes/dashboard/src/app/backend/api"
@@ -85,14 +86,14 @@ type SecretList struct {
 func GetSecretList(client kubernetes.Interface, namespace *common.NamespaceQuery,
 	dsQuery *dataselect.DataSelectQuery) (*SecretList, error) {
 	log.Printf("Getting list of secrets in %s namespace\n", namespace)
-	secretList, err := client.CoreV1().Secrets(namespace.ToRequestParam()).List(api.ListEverything)
+	secretList, err := client.CoreV1().Secrets(namespace.ToRequestParam()).List(context.TODO(), api.ListEverything)
 
 	nonCriticalErrors, criticalError := errors.HandleError(err)
 	if criticalError != nil {
 		return nil, criticalError
 	}
 
-	return toSecretList(secretList.Items, nonCriticalErrors, dsQuery), nil
+	return ToSecretList(secretList.Items, nonCriticalErrors, dsQuery), nil
 }
 
 // CreateSecret creates a single secret using the cluster API client
@@ -106,7 +107,7 @@ func CreateSecret(client kubernetes.Interface, spec SecretSpec) (*Secret, error)
 		Type: spec.GetType(),
 		Data: spec.GetData(),
 	}
-	_, err := client.CoreV1().Secrets(namespace).Create(secret)
+	_, err := client.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metaV1.CreateOptions{})
 	result := toSecret(secret)
 	return &result, err
 }
@@ -119,7 +120,7 @@ func toSecret(secret *v1.Secret) Secret {
 	}
 }
 
-func toSecretList(secrets []v1.Secret, nonCriticalErrors []error, dsQuery *dataselect.DataSelectQuery) *SecretList {
+func ToSecretList(secrets []v1.Secret, nonCriticalErrors []error, dsQuery *dataselect.DataSelectQuery) *SecretList {
 	newSecretList := &SecretList{
 		ListMeta: api.ListMeta{TotalItems: len(secrets)},
 		Secrets:  make([]Secret, 0),
